@@ -45,8 +45,8 @@
 
 > 개발팀 작성 예정
 
-- Frontend 기술 스택: TODO
-- Backend 기술 스택: TODO
+- Frontend 기술 스택: React
+- Backend 기술 스택: Spring
 - 데이터베이스: TODO
 - 실행 및 빌드 명령어: TODO
 - 테스트 명령어: TODO
