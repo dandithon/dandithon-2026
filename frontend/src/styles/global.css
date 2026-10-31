@@ -24,3 +24,5 @@
   img { user-select: none; }
 }
 @utility pixelated { image-rendering: pixelated; }
+
+.app-shell { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
