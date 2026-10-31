@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+@import '@fontsource/pretendard/400.css';
+@import '@fontsource/pretendard/500.css';
+@import '@fontsource/pretendard/600.css';
+@font-face { font-family: 'Galmuri9'; src: url('galmuri/dist/Galmuri9.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'NeoDunggeunmo'; src: url('/fonts/NeoDunggeunmo.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Mona12'; src: url('/fonts/Mona12TextKR.woff2') format('woff2'); font-display: swap; }
+@font-face { font-family: 'Mona12'; src: url('/fonts/Mona12TextKR-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
+@theme {
+  --font-sans: 'Pretendard', sans-serif;
+  --font-pixel: 'Galmuri9', monospace;
+  --font-retro: 'NeoDunggeunmo', 'Galmuri9', monospace;
+  --font-mona: 'Mona12', monospace;
+  --color-paper: #f9ebd8;
+  --color-ink: #3d2b21;
+  --color-muted: #8b7563;
+}
+@layer base {
+  html { background: #202822; color: var(--color-ink); }
+  body { margin: 0; min-width: 280px; }
+  button { cursor: pointer; }
+  button:disabled { cursor: not-allowed; }
+  button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #2672c9; outline-offset: 2px; }
+  img { user-select: none; }
+}
+@utility pixelated { image-rendering: pixelated; }
