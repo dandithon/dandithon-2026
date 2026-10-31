@@ -1,4 +1,9 @@
-import React,{useCallback,useEffect,useRef,useState} from 'react';
+import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import ProfileDialog from './components/ProfileDialog';
+import FullMapDialog from './components/FullMapDialog';
+import {explorationApi} from './api/exploration';
+import {progression} from './game/progression';
+import {demoWaits} from './game/crowd';
 import StartPage from './pages/StartPage';
 import MarketPage from './pages/MarketPage';
 import StorePage from './pages/StorePage';
@@ -16,29 +21,51 @@ export default function App(){
   const store=getStore(storeId);
   const [tab,setTab]=useState('menu'),[modal,setModal]=useState(null),[selected,setSelected]=useState(null),[reviewOrder,setReviewOrder]=useState(null);
   const [busy,setBusy]=useState(false),[toast,setToast]=useState(''),[scale,setScale]=useState(1);
+  const [preferences,setPreferences]=useState(null),[loadError,setLoadError]=useState('');
+  const progress=useMemo(()=>state&&preferences?progression(state,preferences):null,[state,preferences]);
+  const loadId=useRef(0);
   const lock=useRef(false),toastTimer=useRef(),container=useRef(null);
   const close=useCallback(()=>setModal(null),[]);
   const notify=useCallback(message=>{setToast(message);clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),5500);},[]);
-  useEffect(()=>{marketApi.load().then(setState);return()=>clearTimeout(toastTimer.current);},[]);
-  useEffect(()=>{const element=container.current;const observer=new ResizeObserver(entries=>setScale(Math.min(1,entries[0].contentRect.width/402)));observer.observe(element);return()=>observer.disconnect();},[]);
-  useEffect(()=>{if(modal!=='receipts')return;const tick=()=>marketApi.refreshOrders().then(setState);tick();const timer=setInterval(tick,1000);return()=>clearInterval(timer);},[modal]);
-  const run=async task=>{if(lock.current)return;lock.current=true;setBusy(true);try{await task();}catch(error){notify(error.message||'잠시 후 다시 시도해 주세요.');}finally{lock.current=false;setBusy(false);}};
-  const visit=id=>run(async()=>{setState(await marketApi.visit(id));setStoreId(id);setPage('store');});
+  const load=useCallback(async()=>{
+    const id=++loadId.current;setLoadError('');
+    try{
+      if(import.meta.env.VITE_DATA_MODE&&import.meta.env.VITE_DATA_MODE!=='mock')throw Error('실제 API 연결이 준비되지 않았어요. 시연 모드 설정을 확인해 주세요.');
+      const [data,profile]=await Promise.all([marketApi.load(),explorationApi.load()]);
+      if(!data||!Number.isFinite(data.balance)||!['orders','reviews','cart','claimed','visits','favorites'].every(key=>Array.isArray(data[key])))throw Error('시장 저장 정보 형식을 확인할 수 없어요. 기존 데이터를 확인해 주세요.');
+      if(id===loadId.current){setState(data);setPreferences(profile);}
+    }catch(error){if(id===loadId.current)setLoadError(error.message||'시장을 불러오지 못했어요.');}
+  },[]);
+  useEffect(()=>{load();return()=>{loadId.current++;clearTimeout(toastTimer.current);};},[load]);
+  useEffect(()=>{
+    const element=container.current;
+    const resize=()=>{const style=getComputedStyle(element);const inset=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom);setScale(Math.min(1,element.clientWidth/402,Math.max(280,window.innerHeight-52-inset)/874));};
+    const observer=new ResizeObserver(resize);observer.observe(element);window.addEventListener('resize',resize);resize();
+    return()=>{observer.disconnect();window.removeEventListener('resize',resize);};
+  },[]);
+  useEffect(()=>{if(modal!=='receipts')return;let active=true,pending=false;
+    const tick=async()=>{if(pending)return;pending=true;try{const data=await marketApi.refreshOrders();if(active)setState(data);}catch(error){if(active){notify(error.message||'영수증을 갱신하지 못했어요.');clearInterval(timer);}}finally{pending=false;}};
+    const timer=setInterval(tick,1000);tick();return()=>{active=false;clearInterval(timer);};
+  },[modal,notify]);
+  const run=async task=>{if(lock.current)return;lock.current=true;setBusy(true);try{await task();return true;}catch(error){notify(error.message||'잠시 후 다시 시도해 주세요.');return false;}finally{lock.current=false;setBusy(false);}};
+  const visit=id=>run(async()=>{setState(await marketApi.visit(id));setStoreId(id);setPage('store');setModal(null);});
   const favorite=()=>run(async()=>{setState(await marketApi.favorite(storeId));});
   const order=items=>run(async()=>{const result=await marketApi.order(items);setState(result.state);setPage('market');setModal('receipts');notify('데모 주문이 완료됐어요. 약 15초 뒤 조리 완료로 바뀌어요.');});
   const add=(id,q)=>run(async()=>{setState(await marketApi.addToCart(id,q));setModal(null);notify('메뉴를 담았어요. 화면 아래에서 담은 메뉴를 확인하세요.');});
   const openReview=id=>{const ready=id||state.orders.find(o=>o.status==='ready'&&menu.find(m=>m.id===o.itemId)?.storeId===storeId)?.id;if(!ready){notify('조리가 완료된 주문이 있어야 리뷰를 작성할 수 있어요.');return;}setStoreId(menu.find(m=>m.id===state.orders.find(o=>o.id===ready).itemId).storeId);setReviewOrder(ready);setModal('review');};
   const toMenu=next=>{setTab(next);setPage('menu');};
-  return <div ref={container} className="mx-auto w-full max-w-[402px]">
-    <main className="relative overflow-hidden shadow-2xl" style={{height:874*scale}}>
+  return <div ref={container} className="app-shell mx-auto w-full max-w-[402px]">
+    <main className="relative mx-auto overflow-hidden shadow-2xl" style={{height:874*scale,width:402*scale}}>
       <div className="absolute left-0 top-0 h-[874px] w-[402px] origin-top-left bg-paper font-sans" style={{transform:`scale(${scale})`}}>
-        {!state?<p className="p-8 text-center">시장을 준비하고 있어요…</p>:<>
+        {!state||!preferences?<section className="p-8 pt-40 text-center" aria-live="polite">{loadError?<><h1 className="font-retro text-xl">잠시 쉬어갈까요?</h1><p role="alert" className="my-6 break-words text-sm leading-6">{loadError}</p><button onClick={load} className="rounded-lg border-2 border-[#946034] bg-[#ffc857] px-5 py-3">다시 시도</button>{loadError.includes('프로필')&&<button className="mt-4 block w-full text-sm underline" onClick={async()=>{try{await explorationApi.resetPreferences();load();}catch(error){setLoadError(error.message);}}}>프로필 설정만 초기화 (주문·리뷰 유지)</button>}</>:<p>시장을 준비하고 있어요…</p>}</section>:<>
           <div className="size-full" inert={modal?true:undefined}>
             {page==='start'&&<StartPage onStart={()=>setPage('market')}/>}
-            {page==='market'&&<MarketPage state={state} onStore={visit} onModal={setModal} notify={notify} overlay={modal}/>}
+            <div hidden={page!=='market'} className="size-full"><MarketPage preferences={preferences} progress={progress} waits={demoWaits} active={page==='market'} state={state} onStore={visit} onModal={setModal} notify={notify} overlay={modal}/></div>
             {page==='store'&&<StorePage store={store} state={state} onBack={()=>setPage('market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify}/>}
             {page==='menu'&&<MenuPage store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage('store')} onFavorite={favorite} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/>}
           </div>
+          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} onEquip={id=>run(async()=>setPreferences(await explorationApi.equip(id)))} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
+          {modal==='map'&&<FullMapDialog onClose={close} onStore={visit} waits={demoWaits} busy={busy}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
           {modal==='quests'&&<QuestDialog state={state} onClose={close} onClaim={id=>run(async()=>{setState(await marketApi.claim(id));notify('보상 코인을 받았어요!');})} notify={notify} busy={busy}/>}

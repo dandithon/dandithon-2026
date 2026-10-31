@@ -1,0 +1,31 @@
+{
+  "map": {
+    "imgImage124": "/assets/map-imgImage124.png",
+    "imgImage126": "/assets/map-imgImage126.png",
+    "imgImage125": "/assets/map-imgImage125.png",
+    "imgImage128": "/assets/map-imgImage128.png",
+    "imgImage127": "/assets/map-imgImage127.png"
+  },
+  "profile": {
+    "imgImage113": "/assets/profile-imgImage113.png",
+    "imgImage114": "/assets/profile-imgImage114.png",
+    "imgImage111": "/assets/profile-imgImage111.png",
+    "imgImage112": "/assets/profile-imgImage112.png",
+    "imgImage103": "/assets/profile-imgImage103.png",
+    "imgImage51": "/assets/85-390-imgImage51.png",
+    "imgImage118": "/assets/profile-imgImage118.png",
+    "imgImage123": "/assets/profile-imgImage123.png"
+  },
+  "crowd": {
+    "imgImage88": "/assets/crowd-imgImage88.png",
+    "imgImage90": "/assets/crowd-imgImage90.png",
+    "imgImage91": "/assets/crowd-imgImage91.png",
+    "imgImage92": "/assets/crowd-imgImage92.png",
+    "imgImage93": "/assets/crowd-imgImage93.png",
+    "imgImage94": "/assets/crowd-imgImage94.png",
+    "imgImage95": "/assets/crowd-imgImage95.png",
+    "imgImage89": "/assets/crowd-imgImage89.png",
+    "imgImage97": "/assets/crowd-imgImage97.png",
+    "calmBubble": "/assets/crowd-wait-calm.png"
+  }
+}
