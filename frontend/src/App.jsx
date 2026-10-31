@@ -11,6 +11,7 @@ import MenuPage from './pages/MenuPage';
 import OrderDialog from './components/OrderDialog';
 import ReceiptDialog from './components/ReceiptDialog';
 import QuestDialog from './components/QuestDialog';
+import PurchaseComplete from './components/PurchaseComplete';
 import {ReviewEditor,CartDialog} from './components/ExtraDialogs';
 import {getStore,menu} from './mocks/fixtures';
 import {marketApi} from './api/market';
@@ -20,6 +21,7 @@ export default function App(){
   const [storeId,setStoreId]=useState(()=>getStore(location.hash.split('/')[1]).id);
   const store=getStore(storeId);
   const [tab,setTab]=useState('menu'),[modal,setModal]=useState(null),[selected,setSelected]=useState(null),[reviewOrder,setReviewOrder]=useState(null);
+  const [completedOrders,setCompletedOrders]=useState([]);
   const [busy,setBusy]=useState(false),[toast,setToast]=useState(''),[scale,setScale]=useState(1);
   const [preferences,setPreferences]=useState(null),[loadError,setLoadError]=useState('');
   const progress=useMemo(()=>state&&preferences?progression(state,preferences):null,[state,preferences]);
@@ -50,9 +52,9 @@ export default function App(){
   const run=async task=>{if(lock.current)return;lock.current=true;setBusy(true);try{await task();return true;}catch(error){notify(error.message||'잠시 후 다시 시도해 주세요.');return false;}finally{lock.current=false;setBusy(false);}};
   const visit=id=>run(async()=>{setState(await marketApi.visit(id));setStoreId(id);setPage('store');setModal(null);});
   const favorite=()=>run(async()=>{setState(await marketApi.favorite(storeId));});
-  const order=items=>run(async()=>{const result=await marketApi.order(items);setState(result.state);setPage('market');setModal('receipts');notify('데모 주문이 완료됐어요. 약 15초 뒤 조리 완료로 바뀌어요.');});
+  const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');});
   const add=(id,q)=>run(async()=>{setState(await marketApi.addToCart(id,q));setModal(null);notify('메뉴를 담았어요. 화면 아래에서 담은 메뉴를 확인하세요.');});
-  const openReview=id=>{const ready=id||state.orders.find(o=>o.status==='ready'&&menu.find(m=>m.id===o.itemId)?.storeId===storeId)?.id;if(!ready){notify('조리가 완료된 주문이 있어야 리뷰를 작성할 수 있어요.');return;}setStoreId(menu.find(m=>m.id===state.orders.find(o=>o.id===ready).itemId).storeId);setReviewOrder(ready);setModal('review');};
+  const openReview=id=>run(async()=>{const data=await marketApi.refreshOrders();setState(data);const ready=data.orders.find(o=>o.status==='ready'&&(id?o.id===id:menu.find(m=>m.id===o.itemId)?.storeId===storeId));if(!ready){notify('조리가 완료된 주문이 있어야 리뷰를 작성할 수 있어요.');return;}setStoreId(menu.find(m=>m.id===ready.itemId).storeId);setReviewOrder(ready.id);setModal('review');});
   const toMenu=next=>{setTab(next);setPage('menu');};
   return <div ref={container} className="app-shell mx-auto w-full max-w-[402px]">
     <main className="relative mx-auto overflow-hidden shadow-2xl" style={{height:874*scale,width:402*scale}}>
@@ -67,10 +69,11 @@ export default function App(){
           {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} onEquip={id=>run(async()=>setPreferences(await explorationApi.equip(id)))} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
           {modal==='map'&&<FullMapDialog onClose={close} onStore={visit} waits={demoWaits} busy={busy}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
+          {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
           {modal==='quests'&&<QuestDialog state={state} onClose={close} onClaim={id=>run(async()=>{setState(await marketApi.claim(id));notify('보상 코인을 받았어요!');})} notify={notify} busy={busy}/>}
-          {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={(id,text,rating)=>run(async()=>{setState(await marketApi.review(id,text,rating));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');})}/>}
-          {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={order} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
+          {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={(id,text,rating)=>run(async()=>{setState(await marketApi.review(id,text,rating,preferences.nickname));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');})}/>}
+          {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={items=>order(items,true)} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
         </>}
         {toast&&<div role="status" className="pointer-events-none absolute inset-x-[24px] bottom-[24px] z-50 rounded-xl border border-[#dec69c] bg-[#3c2b20f2] px-5 py-4 text-center text-[13px] leading-6 text-[#fff4de] shadow-xl">{toast}</div>}
       </div>
