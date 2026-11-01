@@ -1,6 +1,6 @@
 import React from 'react';
 import PlayerCharacter from './PlayerCharacter';
-export default function MapArtwork({ assets, nickname = '승우', equipped = {}, balance = 1000, joystick = true, position = {x:0,y:0}, direction = 'up', overlay = false, layer = 'hud', camera = {zoom:1,x:0,y:0}, stick = {x:0,y:0}, children }) {
+export default function MapArtwork({ assets, nickname = '승우', equipped = {}, balance = 1000, joystick = true, position = {x:0,y:0}, direction = 'up', moving = false, overlay = false, layer = 'hud', camera = {zoom:1,x:0,y:0}, stick = {x:0,y:0}, children }) {
   const { imgImage7, imgImage5, imgImage11, imgImage12, imgImage13, imgImage15, imgImage16, imgImage4, imgImage87, imgImage20 } = assets;
   if(layer==='world')return <div className="absolute inset-0 origin-top-left" style={{transform:`translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`}}>
       <div className="absolute h-[875px] left-0 top-[-1px] w-[405px]" data-node-id="40:42" data-name="image 7">
@@ -24,8 +24,8 @@ export default function MapArtwork({ assets, nickname = '승우', equipped = {},
         호떡
       </p>
       <div className="absolute contents left-[168px] top-[383px]" data-node-id="125:1137">
-        <div className="absolute h-[84px] left-[168px] top-[383px] w-[67px]" style={{ transform: `translate(${position.x}px, ${position.y}px)` }} data-node-id="125:1134" data-name="image 87">
-          <PlayerCharacter equipped={equipped} direction={direction} backImage={imgImage87}/>
+        <div className="absolute h-[72px] left-[168px] top-[388px] w-[67px]" style={{ transform: `translate(${position.x}px, ${position.y}px)` }} data-node-id="125:1134" data-name="image 87">
+          <div className="size-full" style={{transform:"scaleX(.9)"}}><PlayerCharacter moving={moving} equipped={equipped} direction={direction} backImage={imgImage87}/></div>
         </div>
       </div>
 {children}</div>;

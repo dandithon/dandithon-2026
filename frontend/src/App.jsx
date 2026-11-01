@@ -6,8 +6,7 @@ import {progression} from './game/progression';
 import {demoWaits} from './game/crowd';
 import StartPage from './pages/StartPage';
 import MarketPage from './pages/MarketPage';
-import StorePage from './pages/StorePage';
-import MenuPage from './pages/MenuPage';
+import StoreExperience from './components/StoreExperience';
 import OrderDialog from './components/OrderDialog';
 import ReceiptDialog from './components/ReceiptDialog';
 import QuestDialog from './components/QuestDialog';
@@ -63,8 +62,7 @@ export default function App(){
           <div className="size-full" inert={modal?true:undefined}>
             {page==='start'&&<StartPage onStart={()=>setPage('market')}/>}
             <div hidden={page!=='market'} className="size-full"><MarketPage preferences={preferences} progress={progress} waits={demoWaits} active={page==='market'} state={state} onStore={visit} onModal={setModal} notify={notify} overlay={modal}/></div>
-            {page==='store'&&<StorePage store={store} state={state} onBack={()=>setPage('market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify}/>}
-            {page==='menu'&&<MenuPage store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage('store')} onFavorite={favorite} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/>}
+            {(page==='store'||page==='menu')&&<StoreExperience expanded={page==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/>}
           </div>
           {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} onEquip={id=>run(async()=>setPreferences(await explorationApi.equip(id)))} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
           {modal==='map'&&<FullMapDialog onClose={close} onStore={visit} waits={demoWaits} busy={busy}/>}

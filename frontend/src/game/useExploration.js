@@ -1,18 +1,19 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
-import {movePlayer} from './movement';
+import {movePlayer,resolvePosition} from './movement';
 import {clampCamera,followPlayer,stickVector,zoomCamera} from './camera';
 
 const keys={ArrowUp:[0,-1],ArrowDown:[0,1],ArrowLeft:[-1,0],ArrowRight:[1,0],w:[0,-1],s:[0,1],a:[-1,0],d:[1,0]};
 export default function useExploration(enabled){
-  const [position,setPosition]=useState({x:0,y:0}),[direction,setDirection]=useState('up');
+  const [position,setPosition]=useState({x:0,y:0}),[direction,setDirection]=useState('up'),[moving,setMoving]=useState(false);
   const [camera,setCamera]=useState({zoom:1,x:0,y:0}),[stick,setStick]=useState({x:0,y:0});
   const point=useRef(position),cameraRef=useRef(camera),input=useRef({x:0,y:0}),held=useRef(new Set());
   const pointers=useRef(new Map()),gesture=useRef(null),dragged=useRef(false),stickId=useRef(null);
   const updateCamera=next=>{cameraRef.current=next;setCamera(next);};
   const centerOn=useCallback(position=>{const next=followPlayer(cameraRef.current,position);cameraRef.current=next;setCamera(next);},[]);
-  const stop=()=>{input.current={x:0,y:0};held.current.clear();setStick({x:0,y:0});stickId.current=null;pointers.current.clear();gesture.current=null;};
+  const stop=()=>{setMoving(false);input.current={x:0,y:0};held.current.clear();setStick({x:0,y:0});stickId.current=null;pointers.current.clear();gesture.current=null;};
   useEffect(()=>{
     if(!enabled){stop();return;}
+    point.current=resolvePosition(point.current);setPosition(point.current);
     const down=e=>{if(e.ctrlKey||e.metaKey||e.altKey||/INPUT|TEXTAREA|SELECT/.test(e.target.tagName)||e.target.isContentEditable)return;if(keys[e.key]){e.preventDefault();held.current.add(e.key);}};
     const up=e=>held.current.delete(e.key);
     const hide=()=>{if(document.hidden)stop();};
@@ -26,9 +27,10 @@ export default function useExploration(enabled){
       if(length>.08){
         if(length>1){x/=length;y/=length;}
         setDirection(Math.abs(x)>Math.abs(y)?x>0?'right':'left':y>0?'down':'up');
-        point.current=movePlayer(point.current,x*105*elapsed,y*105*elapsed);setPosition(point.current);
+        const next=movePlayer(point.current,x*105*elapsed,y*105*elapsed);
+        setMoving(next.x!==point.current.x||next.y!==point.current.y);point.current=next;setPosition(next);
         updateCamera(followPlayer(cameraRef.current,point.current));
-      }
+      }else setMoving(false);
       frame=requestAnimationFrame(tick);
     };
     frame=requestAnimationFrame(tick);
@@ -62,5 +64,5 @@ export default function useExploration(enabled){
     onPointerMove:e=>{if(e.pointerId===stickId.current)moveStick(e);},
     onPointerUp:release,onPointerCancel:release,onLostPointerCapture:release,
   };
-  return {position,direction,camera,stick,mapHandlers,stickHandlers,centerOn};
+  return {position,direction,moving,camera,stick,mapHandlers,stickHandlers,centerOn};
 }
