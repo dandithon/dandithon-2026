@@ -7,14 +7,15 @@ import useGeolocation,{locationMessages} from '../game/useGeolocation';
 import {mapCalibration} from '../game/mapCalibration';
 export default function MarketPage({state,onStore,onModal,notify,overlay,active=true,preferences,progress,waits}){
   const [joystick,setJoystick]=useState(true);
-  const {position,direction,camera,stick,mapHandlers,stickHandlers,centerOn}=useExploration(active&&!overlay&&joystick);
+  const {position,direction,moving,camera,stick,mapHandlers,stickHandlers,centerOn}=useExploration(active&&!overlay&&joystick);
   const gps=useGeolocation(active&&!overlay&&!joystick,mapCalibration);
   const displayPosition=!joystick&&gps.point?gps.point:position;
   useEffect(()=>{if(!joystick&&gps.point)centerOn(gps.point);else if(joystick)centerOn(position);},[joystick,gps.point,centerOn]);
-  const screen=overlay==='receipts'?'125:1186':overlay==='quests'?'125:1213':joystick?'40:41':'138:1528';
+  // Dialogs shade the live map; they must never swap its world artwork.
+  const screen=joystick?'40:41':'138:1528';
   return <section className="relative size-full overflow-hidden" aria-label="서문시장 지도">
     <div className="absolute inset-0 touch-none select-none" {...mapHandlers}>
-      <MapArtwork layer="world" assets={manifest[screen]} position={displayPosition} direction={direction} camera={camera} equipped={progress.equipped}>
+      <MapArtwork layer="world" assets={manifest['40:41']} position={displayPosition} direction={direction} moving={moving} camera={camera} equipped={progress.equipped}>
     <button aria-label="서문분식 들어가기" onClick={()=>onStore('seomun')} className="absolute left-[15px] top-[136px] h-[153px] w-[148px] rounded-xl"/>
     <button aria-label="칼국수 가게 방문" onClick={()=>onStore('noodle')} className="absolute left-[268px] top-[136px] h-[140px] w-[58px]"/>
     <button aria-label="호떡 가게 방문" onClick={()=>onStore('hotteok')} className="absolute left-[10px] top-[493px] h-[155px] w-[150px]"/>

@@ -26,3 +26,10 @@
 @utility pixelated { image-rendering: pixelated; }
 
 .app-shell { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* A shared sheet settles from its current drag height without remounting the scene. */
+.store-sheet { transition: height 320ms cubic-bezier(.22,1,.36,1); }
+.store-sheet-content, .store-scene-shade, .store-scene-greeting { transition: opacity 220ms ease; }
+@media (prefers-reduced-motion: reduce) {
+  .store-sheet, .store-sheet-content, .store-scene-shade, .store-scene-greeting { transition: none; }
+}

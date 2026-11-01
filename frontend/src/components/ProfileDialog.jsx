@@ -5,12 +5,11 @@ import MenuImage from './MenuImage';
 import art from '../assets/exploration.json';
 import mapArt from '../assets/figma.json';
 import {menu,getStore} from '../mocks/fixtures';
-import {badges,hasOutfit} from '../game/progression';
+import {badges} from '../game/progression';
 
 export default function ProfileDialog({state,preferences,progress,onClose,onEquip,onRename,busy}){
   const [tab,setTab]=useState('bag'),[editing,setEditing]=useState(false),[name,setName]=useState(preferences.nickname);
   const {items,equipped,counts}=progress;
-  const fullOutfit=hasOutfit(equipped);
   return <Dialog label="내 프로필" onClose={onClose}>
     <section className="absolute inset-x-0 bottom-0 top-[134px] flex flex-col rounded-t-[30px] bg-[#fff9f0]">
       <header className="relative h-[97px] shrink-0 px-[38px] pt-[31px]">
@@ -28,8 +27,7 @@ export default function ProfileDialog({state,preferences,progress,onClose,onEqui
         {tab==='bag'&&<>
           <div className="relative ml-[25px] mr-[38px] mt-[27px] flex h-[260px] justify-between">
             <div className="relative h-[260px] w-[228px] rounded-[10px] bg-[#f5e6d2] shadow-[inset_0px_4px_4px_0px_rgba(0,0,0,.25)]">
-              {fullOutfit?<img alt="모자·자켓·신발을 착용한 캐릭터 정면" src={art.profile.imgImage111} className="absolute left-[62px] top-[43px] h-[174px] w-[104px]"/>:<div className="absolute left-[58px] top-[43px] h-[174px] w-[112px]"><PlayerCharacter direction="down" backImage={mapArt['40:41'].imgImage87}/></div>}
-              {!fullOutfit&&Object.keys(equipped).length>0&&<p className="absolute inset-x-2 bottom-2 text-center text-[10px] text-muted">개별 장비 외형 준비 중 · 착용 상태는 오른쪽에 표시</p>}
+              <div className="absolute left-[19px] top-[28px] size-[190px]"><PlayerCharacter direction="down" equipped={equipped}/></div>
             </div>
             <div className="flex w-[78px] flex-col justify-between">
               {['head','body','feet'].map(slot=>{const item=items.find(i=>i.slot===slot),worn=equipped[slot]===item.id;return <button key={slot} disabled={busy||!item.unlocked} aria-label={`${item.name} ${worn?'해제':'착용'}`} aria-pressed={worn} onClick={()=>onEquip(item.id)} className="relative h-[76px] rounded-[10px] border border-[#c9a989] bg-[#fff7ea] disabled:opacity-50"><img alt="" src={art.profile[item.image]} className="mx-auto h-[44px] w-[64px]"/><span className="absolute inset-x-0 bottom-1 text-[10px]">{worn?'착용 중':item.unlocked?'착용하기':'잠김'}</span></button>;})}

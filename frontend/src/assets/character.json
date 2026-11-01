@@ -1,0 +1,7 @@
+{
+  "atlases": {
+    "base": "/assets/character/base-walk.png",
+    "outfit": "/assets/character/outfit-walk.png",
+    "scarf": "/assets/character/scarf-walk.png"
+  }
+}
