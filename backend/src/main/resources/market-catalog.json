@@ -1,0 +1,210 @@
+[
+  {
+    "id": "seomun",
+    "name": "서문분식",
+    "category": "분식",
+    "description": "40년 전통의 서문시장 대표 떡볶이! 매콤달콤한 양념과 쫄깃한 떡이 어우러진 추억의 맛을 즐겨보세요.",
+    "greeting": "어서 오이소~\n매콤~한 떡볶이\n드시고 가이소!",
+    "tags": [
+      "#매콤달콤",
+      "#시장대표메뉴",
+      "#가성비",
+      "#줄서는맛집"
+    ],
+    "waitTimeMinutes": 5,
+    "menus": [
+      {
+        "id": "tteok",
+        "name": "떡볶이",
+        "price": 300,
+        "description": "매콤달콤한 양념이 매력적인 떡볶이",
+        "storeId": "seomun",
+        "isFeatured": true,
+        "imageUrl": "/assets/75-189-imgImage32.png"
+      },
+      {
+        "id": "sundae",
+        "name": "순대",
+        "price": 300,
+        "description": "쫄깃한 식감의 고소한 순대",
+        "storeId": "seomun",
+        "isFeatured": false,
+        "imageUrl": "/assets/75-189-imgImage33.png"
+      },
+      {
+        "id": "fried",
+        "name": "튀김 세트",
+        "price": 500,
+        "description": "바삭한 튀김 5종 세트",
+        "storeId": "seomun",
+        "isFeatured": false,
+        "imageUrl": "/assets/75-189-imgImage34.png"
+      },
+      {
+        "id": "fish",
+        "name": "오뎅",
+        "price": 300,
+        "description": "따뜻한 국물의 길거리 오뎅",
+        "storeId": "seomun",
+        "isFeatured": false,
+        "imageUrl": "/assets/75-189-imgImage35.png"
+      }
+    ]
+  },
+  {
+    "id": "noodle",
+    "name": "시장칼국수",
+    "category": "면요리",
+    "description": "따끈한 멸치 육수와 매일 뽑는 쫄깃한 면! 든든한 한 그릇과 손만두로 시장 구경의 허기를 채워보세요.",
+    "greeting": "어서 오이소~\n뜨끈한 칼국수\n한 그릇 하이소!",
+    "tags": [
+      "#따끈한육수",
+      "#수제면",
+      "#든든한한끼",
+      "#손만두"
+    ],
+    "waitTimeMinutes": 10,
+    "menus": [
+      {
+        "storeId": "noodle",
+        "id": "noodle-basic",
+        "name": "멸치 칼국수",
+        "price": 400,
+        "description": "진한 멸치 육수와 쫄깃한 면",
+        "isFeatured": true,
+        "imageUrl": null
+      },
+      {
+        "storeId": "noodle",
+        "id": "noodle-spicy",
+        "name": "얼큰 칼국수",
+        "price": 450,
+        "description": "칼칼한 국물로 든든한 한 끼",
+        "isFeatured": false,
+        "imageUrl": null
+      },
+      {
+        "storeId": "noodle",
+        "id": "noodle-dumpling",
+        "name": "손만두",
+        "price": 300,
+        "description": "고기와 채소를 꽉 채운 손만두",
+        "isFeatured": false,
+        "imageUrl": null
+      },
+      {
+        "storeId": "noodle",
+        "id": "noodle-cold",
+        "name": "비빔국수",
+        "price": 350,
+        "description": "새콤달콤 양념에 비빈 국수",
+        "isFeatured": false,
+        "imageUrl": null
+      }
+    ]
+  },
+  {
+    "id": "hotteok",
+    "name": "달콤호떡",
+    "category": "간식",
+    "description": "주문하면 바로 구워내는 바삭하고 쫀득한 호떡! 달콤한 씨앗과 고소한 치즈를 가득 담았어요.",
+    "greeting": "방금 구웠어요~\n달콤한 호떡\n드시고 가이소!",
+    "tags": [
+      "#갓구운호떡",
+      "#달콤한간식",
+      "#씨앗가득",
+      "#겉바속촉"
+    ],
+    "waitTimeMinutes": 15,
+    "menus": [
+      {
+        "storeId": "hotteok",
+        "id": "hotteok-seed",
+        "name": "씨앗 호떡",
+        "price": 150,
+        "description": "고소한 씨앗과 달콤한 꿀",
+        "isFeatured": true,
+        "imageUrl": null
+      },
+      {
+        "storeId": "hotteok",
+        "id": "hotteok-cheese",
+        "name": "치즈 호떡",
+        "price": 200,
+        "description": "쭉 늘어나는 고소한 치즈",
+        "isFeatured": false,
+        "imageUrl": null
+      },
+      {
+        "storeId": "hotteok",
+        "id": "hotteok-honey",
+        "name": "꿀 호떡",
+        "price": 150,
+        "description": "흑설탕 꿀이 가득한 호떡",
+        "isFeatured": false,
+        "imageUrl": null
+      },
+      {
+        "storeId": "hotteok",
+        "id": "hotteok-rice",
+        "name": "식혜",
+        "price": 100,
+        "description": "살얼음 동동 시원한 식혜",
+        "isFeatured": false,
+        "imageUrl": null
+      }
+    ]
+  },
+  {
+    "id": "coffee",
+    "name": "골목카페",
+    "category": "카페",
+    "description": "시장 골목에서 잠깐 쉬어가세요. 향긋한 커피와 부드러운 디저트로 달콤한 휴식을 준비했어요.",
+    "greeting": "잠깐 쉬어가요~\n향긋한 커피와\n달콤한 디저트!",
+    "tags": [
+      "#커피한잔",
+      "#달콤디저트",
+      "#잠깐의휴식",
+      "#시장카페"
+    ],
+    "waitTimeMinutes": 22,
+    "menus": [
+      {
+        "storeId": "coffee",
+        "id": "coffee-americano",
+        "name": "아메리카노",
+        "price": 200,
+        "description": "고소하고 깔끔한 커피 한 잔",
+        "isFeatured": true,
+        "imageUrl": null
+      },
+      {
+        "storeId": "coffee",
+        "id": "coffee-latte",
+        "name": "카페라떼",
+        "price": 250,
+        "description": "부드러운 우유와 진한 커피",
+        "isFeatured": false,
+        "imageUrl": null
+      },
+      {
+        "storeId": "coffee",
+        "id": "coffee-strawberry",
+        "name": "딸기라떼",
+        "price": 300,
+        "description": "달콤한 딸기와 신선한 우유",
+        "isFeatured": false,
+        "imageUrl": null
+      },
+      {
+        "storeId": "coffee",
+        "id": "coffee-waffle",
+        "name": "크림 와플",
+        "price": 350,
+        "description": "바삭한 와플과 달콤한 크림",
+        "isFeatured": false,
+        "imageUrl": null
+      }
+    ]
+  }
+]
