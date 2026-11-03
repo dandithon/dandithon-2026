@@ -1,181 +1,614 @@
 # API 명세서 (API Specification)
 
-> 시장에 가면 | 2026 단디톤
+> 시장에 가면 (서문시장 RPG) | 2026 단디톤
 
-## 1. 개요
+본 문서는 '시장에 가면' 서비스의 프론트엔드와 백엔드 간 연동을 위한 공식 REST API 명세서입니다.  
+Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api/market.js`, `frontend/src/api/exploration.js`), 팀에서 확정한 10대 개발 정책을 바탕으로 작성되었습니다.
 
-본 문서는 '시장에 가면' 서비스의 프론트엔드와 백엔드 간 API 연동을 위한 명세서입니다.
+---
 
-서비스 기획서(`PRD.md`)를 기준으로 필요한 API를 정리하며,
-실제 엔드포인트와 데이터 구조는 FE·BE 개발팀이 협의하여 확정합니다.
-
-## 2. API 기본 정보
+## 1. API 기본 정보 및 정책
 
 | 항목 | 내용 |
 |---|---|
-| Backend | Spring (Spring Boot 여부 확인 필요) |
-| API Base URL | TBD |
-| 데이터 형식 | TBD |
-| 인증 방식 | TBD |
-| API 문서화 도구 | TBD |
+| Base URL | `http://localhost:8080/api/v1` (배포 시 도메인 교체) |
+| 통신 형식 | JSON (`application/json; charset=UTF-8`) |
+| 문자 인코딩 | UTF-8 |
+| 인증 방식 (MVP) | 단일 게스트 유저 자동 로그인 (`userId: 1`, 닉네임: '승우', 기본 코인: 1,000) |
+| 날짜/시간 형식 | ISO 8601 (`yyyy-MM-dd'T'HH:mm:ss`) |
 
-## 3. API 목록
+### 핵심 비즈니스 규칙
+1. **구매 횟수 집계**: 구매 수량이 아닌 **주문 성공 건수(주문 메뉴 건당 +1회)**를 누적 구매 횟수로 인정합니다.
+2. **보상 카운트 반영 시점**: `POST /api/v1/orders` (코인 결제 성공) 즉시 해당 음식의 누적 횟수가 증가하고 장비/배지 달성 조건이 갱신됩니다.
+3. **장비 획득 기준 (Figma 반영)**: 1회(모자), 3회(자켓), 5회(신발), 8회(목도리)
+4. **배지 획득 기준 (PRD 반영)**: 3회(브론즈), 5회(실버), 10회(골드)
+5. **조리 상태 3단계**: `cooking`(조리 중) → `ready`(조리 완료) → `reviewed`(리뷰 작성 완료)
+   - 조리 완료(`ready`) 상태의 주문만 리뷰 작성이 활성화됩니다.
+6. **혼잡도 구간 (`~이상 ~미만`)**:
+   - `0분 이상 5분 미만`: 여유 (NPC 1~2명)
+   - `5분 이상 10분 미만`: 보통 (NPC 3~5명)
+   - `10분 이상 20분 미만`: 혼잡 (NPC 6~8명)
+   - `20분 이상`: 매우 혼잡 (NPC 9명 이상)
 
-> 아래 목록은 기획서 기반의 API 후보입니다.
-> 실제 API 개수와 구성은 개발팀이 결정합니다.
+---
 
-| 구분 | 기능 | Method | Endpoint |
+## 2. 공통 응답 포맷 (Common Response Format)
+
+모든 API 응답은 아래의 공통 래퍼(Wrapper) 구조를 사용합니다.
+
+### 2.1 성공 응답 (HTTP 200 / 201)
+```json
+{
+  "success": true,
+  "data": { ... },
+  "error": null
+}
+```
+
+### 2.2 오류 응답 (HTTP 4xx / 5xx)
+```json
+{
+  "success": false,
+  "data": null,
+  "error": {
+    "code": "INSUFFICIENT_BALANCE",
+    "message": "보유 코인이 부족해요. 수량을 줄여 주세요."
+  }
+}
+```
+
+#### 공통 에러 코드
+| 에러 코드 | HTTP Status | 설명 |
+|---|---|---|
+| `INVALID_INPUT_VALUE` | 400 | 요청 파라미터 또는 바디의 유효성 검증 실패 |
+| `USER_NOT_FOUND` | 404 | 사용자를 찾을 수 없음 |
+| `STORE_NOT_FOUND` | 404 | 가게를 찾을 수 없음 |
+| `MENU_NOT_FOUND` | 404 | 메뉴를 찾을 수 없음 |
+| `ORDER_NOT_FOUND` | 404 | 주문 건을 찾을 수 없음 |
+| `INSUFFICIENT_BALANCE` | 400 | 코인 잔액 부족 |
+| `INVALID_ORDER_STATUS` | 400 | 조리 완료 상태가 아닌 주문에 리뷰 작성 시도 등 |
+| `EQUIPMENT_LOCKED` | 400 | 아직 획득하지 않은 장비 착용 시도 |
+| `QUEST_NOT_COMPLETED` | 400 | 아직 완료되지 않았거나 이미 수령한 퀘스트 보상 요청 |
+| `INTERNAL_SERVER_ERROR` | 500 | 서버 내부 오류 |
+
+---
+
+## 3. API 엔드포인트 목록
+
+### 3.1 사용자 및 프로필 (도메인 A - BE1 추천)
+| 기능 | Method | Endpoint | 설명 |
 |---|---|---|---|
-| 사용자 | 프로필 조회 | TBD | TBD |
-| 사용자 | 보유 코인 조회 | TBD | TBD |
-| 지도 | 가게 목록 조회 | TBD | TBD |
-| 지도 | 가게 상세 정보 조회 | TBD | TBD |
-| 혼잡도 | 가게별 예상 대기시간 조회 | TBD | TBD |
-| 상품 | 가게별 상품 목록 조회 | TBD | TBD |
-| 구매 | 게임 코인 구매 처리 | TBD | TBD |
-| 영수증 | 구매 내역 조회 | TBD | TBD |
-| 영수증 | 조리 상태 조회 | TBD | TBD |
-| 리뷰 | 리뷰 작성 | TBD | TBD |
-| 리뷰 | 내 리뷰 조회 | TBD | TBD |
-| 장비 | 보유 장비 조회 | TBD | TBD |
-| 장비 | 장비 착용 및 해제 | TBD | TBD |
-| 배지 | 음식별 배지 조회 | TBD | TBD |
-| 퀘스트 | 퀘스트 목록 조회 | TBD | TBD |
-| 퀘스트 | 퀘스트 완료 및 보상 처리 | TBD | TBD |
+| 내 정보 조회 | `GET` | `/api/v1/users/me` | 기본 정보, 잔액, 레벨, 착용 장비 |
+| 닉네임 변경 | `PATCH` | `/api/v1/users/me/nickname` | 닉네임 수정 (MVP 선택) |
+| 장비 목록 조회 | `GET` | `/api/v1/profile/equipments` | 가방 탭: 획득 및 착용 여부 |
+| 장비 착용/해제 | `PATCH` | `/api/v1/profile/equipments/{id}/toggle` | 장비 착용 또는 해제 |
+| 배지 목록 조회 | `GET` | `/api/v1/profile/badges` | 수집 음식 탭: 음식별 횟수/배지 |
+| 전체 지도 구역 | `GET` | `/api/v1/map/zones` | 서문시장 전체 지구 목록 |
 
-※ 지도 렌더링이나 캐릭터 이동처럼 프론트엔드에서 처리하는 기능은 반드시 별도의 API가 필요한 것은 아닙니다.
-
----
-
-## 4. API 상세 명세 템플릿
-
-개발팀은 API를 확정한 뒤 아래 양식을 사용하여 상세 내용을 작성합니다.
-
-### API 이름: TBD
-
-**기능 설명**
-
-TBD
-
-**Method**
-
-TBD
-
-**Endpoint**
-
-TBD
-
-**Request Parameters**
-
-| 이름 | 타입 | 필수 여부 | 설명 |
+### 3.2 가게 및 결제/영수증/퀘스트 (도메인 B - BE2 추천)
+| 기능 | Method | Endpoint | 설명 |
 |---|---|---|---|
-| TBD | TBD | TBD | TBD |
+| 가게 목록 조회 | `GET` | `/api/v1/stores` | 가게 목록, 카테고리, 혼잡도 |
+| 특정 가게 상세 | `GET` | `/api/v1/stores/{storeId}` | 가게 소개글, 메뉴 목록, 평점 |
+| 코인 결제 및 주문 | `POST` | `/api/v1/orders` | 코인 차감, 주문 생성, 횟수 반영 |
+| 영수증 목록 조회 | `GET` | `/api/v1/orders/receipts` | 내 영수증 및 조리 상태 확인 |
+| 가게 리뷰 목록 | `GET` | `/api/v1/stores/{storeId}/reviews` | 가게별 작성된 리뷰 조회 |
+| 리뷰 작성 | `POST` | `/api/v1/reviews` | 조리 완료 주문 건 리뷰 작성 |
+| 퀘스트 목록 조회 | `GET` | `/api/v1/quests` | 일일 미션/퀘스트/이벤트 목록 |
+| 퀘스트 보상 수령 | `POST` | `/api/v1/quests/{questId}/claim` | 완료된 퀘스트 코인 수령 |
 
-**Request Body**
+---
 
+## 4. API 상세 명세
+
+### 4.1 내 정보 조회
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/users/me`
+- **Response (200 OK)**:
 ```json
-{}
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "nickname": "승우",
+    "balance": 1000,
+    "level": 1,
+    "exp": 30,
+    "nextLevelExp": 100,
+    "equipped": {
+      "head": "tteok-hat",
+      "body": "tteok-jacket",
+      "feet": "tteok-shoes",
+      "neck": null
+    }
+  },
+  "error": null
+}
 ```
 
-**Response**
+---
 
+### 4.2 닉네임 변경
+- **Method**: `PATCH`
+- **Endpoint**: `/api/v1/users/me/nickname`
+- **Request Body**:
 ```json
-{}
+{
+  "nickname": "서문탐험가"
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "nickname": "서문탐험가"
+  },
+  "error": null
+}
 ```
 
-**Error Response**
+---
 
+### 4.3 장비 목록 및 착용 상태 조회 (가방 탭)
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/profile/equipments`
+- **Response (200 OK)**:
 ```json
-{}
+{
+  "success": true,
+  "data": {
+    "equipments": [
+      {
+        "id": "tteok-hat",
+        "name": "모자",
+        "slot": "head",
+        "targetFoodId": "tteok",
+        "targetFoodName": "떡볶이",
+        "requiredCount": 1,
+        "currentCount": 3,
+        "unlocked": true,
+        "isEquipped": true,
+        "imageUrl": "/assets/profile-imgImage112.png"
+      },
+      {
+        "id": "tteok-jacket",
+        "name": "자켓",
+        "slot": "body",
+        "targetFoodId": "tteok",
+        "targetFoodName": "떡볶이",
+        "requiredCount": 3,
+        "currentCount": 3,
+        "unlocked": true,
+        "isEquipped": true,
+        "imageUrl": "/assets/profile-imgImage114.png"
+      },
+      {
+        "id": "tteok-shoes",
+        "name": "신발",
+        "slot": "feet",
+        "targetFoodId": "tteok",
+        "targetFoodName": "떡볶이",
+        "requiredCount": 5,
+        "currentCount": 3,
+        "unlocked": false,
+        "isEquipped": false,
+        "imageUrl": "/assets/profile-imgImage113.png"
+      },
+      {
+        "id": "tteok-scarf",
+        "name": "목도리",
+        "slot": "neck",
+        "targetFoodId": "tteok",
+        "targetFoodName": "떡볶이",
+        "requiredCount": 8,
+        "currentCount": 3,
+        "unlocked": false,
+        "isEquipped": false,
+        "imageUrl": "/assets/profile-imgImage123.png"
+      }
+    ]
+  },
+  "error": null
+}
 ```
 
-**비고**
+---
 
-- 인증 필요 여부: TBD
-- 담당자: TBD
-- 추가 고려 사항: TBD
+### 4.4 장비 착용 / 해제 토글
+- **Method**: `PATCH`
+- **Endpoint**: `/api/v1/profile/equipments/{id}/toggle`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "equipped": {
+      "head": "tteok-hat",
+      "body": null,
+      "feet": "tteok-shoes",
+      "neck": null
+    }
+  },
+  "error": null
+}
+```
 
 ---
 
-## 5. 기능별 API 연동 규칙
-
-### 5.1 사용자 및 프로필
-
-- 사용자 프로필과 캐릭터 정보가 일관되게 유지되어야 합니다.
-- 보유 코인과 경험치 등 사용자 상태가 화면에 올바르게 반영되어야 합니다.
-
-### 5.2 지도 및 가게
-
-- 가게 정보는 프론트엔드의 NPC 및 지도 정보와 연결될 수 있어야 합니다.
-- 가게와 상품의 식별 기준은 FE·BE가 협의하여 결정합니다.
-
-### 5.3 예상 대기시간 및 혼잡도
-
-- 예상 대기시간 데이터를 NPC 대기줄 표현에 활용합니다.
-- 실제 예측 결과와 Mock 데이터를 구분해야 합니다.
-- 혼잡도 구간과 NPC 수의 매핑 기준을 일관되게 적용합니다.
-
-### 5.4 게임 코인 구매
-
-- 실제 결제 API를 연동하지 않습니다.
-- 코인 잔액이 부족하면 구매가 완료되지 않아야 합니다.
-- 구매 성공 시 코인 차감과 구매 내역 생성을 일관되게 처리합니다.
-- 동일한 구매 요청이 중복 처리되지 않도록 고려합니다.
-- 구매 횟수 및 보상 데이터가 중복 반영되지 않도록 합니다.
-
-### 5.5 영수증 및 리뷰
-
-- 구매 내역과 영수증 정보가 일치해야 합니다.
-- 조리 상태에 따라 리뷰 작성 가능 여부를 구분합니다.
-- 해커톤 MVP에서는 Mock 조리 상태를 사용할 수 있습니다.
-
-### 5.6 장비 및 배지
-
-- 음식별 누적 구매 횟수를 기준으로 보상을 처리합니다.
-- 이미 획득한 보상을 중복 지급하지 않도록 합니다.
-- 장비의 획득 여부와 착용 여부를 구분합니다.
-
-### 5.7 퀘스트
-
-- 퀘스트의 진행 상태와 완료 상태를 구분합니다.
-- 완료 조건 충족 여부를 확인한 후 보상을 지급합니다.
-- 동일한 완료 보상이 중복 지급되지 않도록 합니다.
+### 4.5 수집한 음식 및 배지 현황 조회 (수집 음식 탭)
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/profile/badges`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "foods": [
+      {
+        "foodId": "tteok",
+        "foodName": "떡볶이",
+        "purchaseCount": 3,
+        "badges": [
+          { "tier": "BRONZE", "name": "브론즈", "required": 3, "earned": true },
+          { "tier": "SILVER", "name": "실버", "required": 5, "earned": false },
+          { "tier": "GOLD", "name": "골드", "required": 10, "earned": false }
+        ],
+        "nextBadge": {
+          "tier": "SILVER",
+          "name": "실버",
+          "remainingCount": 2
+        }
+      }
+    ]
+  },
+  "error": null
+}
+```
 
 ---
 
-## 6. 공통 API 규칙
-
-> 세부 규칙은 개발팀 협의 후 확정합니다.
-
-- API 요청 및 응답 데이터 구조를 FE·BE 간 일치시킵니다.
-- 필드명과 데이터 타입을 임의로 변경하지 않습니다.
-- API 변경 시 관련 담당자와 협의합니다.
-- 오류 응답 형식을 일관되게 관리합니다.
-- 민감한 정보를 API 응답에 불필요하게 포함하지 않습니다.
-- Mock 데이터와 실제 데이터를 명확하게 구분합니다.
-
----
-
-## 7. 개발팀 확정 사항
-
-- [ ] API Base URL
-- [ ] 인증 및 사용자 식별 방식
-- [ ] API 엔드포인트
-- [ ] 요청 및 응답 데이터 구조
-- [ ] 공통 오류 응답 형식
-- [ ] 페이지네이션 적용 여부
-- [ ] 데이터베이스 연동 방식
-- [ ] API 테스트 및 문서화 방식
+### 4.6 전체 지도 구역 목록 조회
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/map/zones`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "zones": [
+      { "id": "zone-1", "name": "1지구", "desc": "섬유 한복" },
+      { "id": "zone-2", "name": "2지구", "desc": "먹거리 타운" },
+      { "id": "zone-dongsan", "name": "동산상가", "desc": "패션 의류" },
+      { "id": "zone-night", "name": "야시장", "desc": "야간 먹거리" }
+    ]
+  },
+  "error": null
+}
+```
 
 ---
 
-## 8. 참고 문서
-
-- [서비스 요구사항](PRD.md)
-- [시스템 아키텍처](ARCHITECTURE.md)
-- [작업 목록](TASKS.md)
+### 4.7 가게 목록 및 혼잡도 조회
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/stores`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "stores": [
+      {
+        "id": "seomun",
+        "name": "서문분식",
+        "category": "분식",
+        "waitTimeMinutes": 5,
+        "crowdLevel": "CALM",
+        "crowdLabel": "여유",
+        "npcCount": 2,
+        "tags": ["#매콤달콤", "#가성비", "#줄서는맛집", "#시장대표메뉴"]
+      },
+      {
+        "id": "noodle",
+        "name": "시장칼국수",
+        "category": "면요리",
+        "waitTimeMinutes": 10,
+        "crowdLevel": "NORMAL",
+        "crowdLabel": "보통",
+        "npcCount": 4,
+        "tags": ["#따끈한육수", "#수제면", "#든든한한끼"]
+      },
+      {
+        "id": "hotteok",
+        "name": "달콤호떡",
+        "category": "간식",
+        "waitTimeMinutes": 15,
+        "crowdLevel": "CROWDED",
+        "crowdLabel": "혼잡",
+        "npcCount": 7,
+        "tags": ["#갓구운호떡", "#달콤한간식", "#씨앗가득"]
+      },
+      {
+        "id": "coffee",
+        "name": "골목카페",
+        "category": "카페",
+        "waitTimeMinutes": 22,
+        "crowdLevel": "VERY_CROWDED",
+        "crowdLabel": "매우 혼잡",
+        "npcCount": 10,
+        "tags": ["#커피한잔", "#달콤디저트", "#잠깐의휴식"]
+      }
+    ]
+  },
+  "error": null
+}
+```
 
 ---
 
-※ 본 문서는 서비스 기획서를 기반으로 작성한 API 설계 초안입니다.
-※ 실제 API 계약은 FE·BE 개발팀이 협의하여 확정합니다.
+### 4.8 특정 가게 상세 정보 및 메뉴 조회
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/stores/{storeId}`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "id": "seomun",
+    "name": "서문분식",
+    "category": "분식",
+    "description": "40년 전통의 서문시장 대표 떡볶이! 매콤달콤한 양념과 쫄깃한 떡이 어우러진 추억의 맛을 즐겨보세요.",
+    "greeting": "어서 오이소~\n매콤~한 떡볶이\n드시고 가이소!",
+    "rating": 4.0,
+    "reviewCount": 348,
+    "tags": ["#매콤달콤", "#가성비", "#줄서는맛집", "#시장대표메뉴"],
+    "menus": [
+      {
+        "id": "tteok",
+        "name": "떡볶이",
+        "price": 300,
+        "description": "매콤달콤한 양념이 매력적인 떡볶이",
+        "isFeatured": true,
+        "imageUrl": "/assets/75-189-imgImage32.png"
+      },
+      {
+        "id": "sundae",
+        "name": "순대",
+        "price": 300,
+        "description": "쫄깃한 식감의 고소한 순대",
+        "isFeatured": false,
+        "imageUrl": "/assets/75-189-imgImage33.png"
+      },
+      {
+        "id": "fried",
+        "name": "튀김 세트",
+        "price": 500,
+        "description": "바삭한 튀김 5종 세트",
+        "isFeatured": false,
+        "imageUrl": "/assets/75-189-imgImage34.png"
+      },
+      {
+        "id": "fish",
+        "name": "오뎅",
+        "price": 300,
+        "description": "따뜻한 국물의 길거리 오뎅",
+        "isFeatured": false,
+        "imageUrl": "/assets/75-189-imgImage35.png"
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.9 코인 Mock 결제 및 주문 생성
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/orders`
+- **Request Body**:
+```json
+{
+  "storeId": "seomun",
+  "items": [
+    {
+      "menuId": "tteok",
+      "quantity": 1
+    }
+  ]
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "orderId": "ord-20261101-001",
+    "storeId": "seomun",
+    "totalPrice": 300,
+    "remainingBalance": 700,
+    "status": "cooking",
+    "readyAfterSeconds": 15,
+    "items": [
+      {
+        "menuId": "tteok",
+        "menuName": "떡볶이",
+        "quantity": 1,
+        "price": 300
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.10 영수증 목록 조회
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/orders/receipts`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "receipts": [
+      {
+        "orderId": "ord-20261101-001",
+        "storeId": "seomun",
+        "storeName": "서문분식",
+        "menuId": "tteok",
+        "menuName": "떡볶이",
+        "quantity": 1,
+        "status": "cooking",
+        "canReview": false,
+        "orderedAt": "2026-11-01T13:00:00"
+      },
+      {
+        "orderId": "ord-20261101-002",
+        "storeId": "seomun",
+        "storeName": "서문분식",
+        "menuId": "fried",
+        "menuName": "튀김 세트",
+        "quantity": 1,
+        "status": "ready",
+        "canReview": true,
+        "orderedAt": "2026-11-01T12:45:00"
+      },
+      {
+        "orderId": "ord-20261101-003",
+        "storeId": "seomun",
+        "storeName": "서문분식",
+        "menuId": "fish",
+        "menuName": "오뎅",
+        "quantity": 1,
+        "status": "reviewed",
+        "canReview": false,
+        "orderedAt": "2026-11-01T12:00:00"
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.11 가게 리뷰 목록 조회
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/stores/{storeId}/reviews`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "reviews": [
+      {
+        "id": "rev-1",
+        "authorName": "승우",
+        "rating": 4,
+        "text": "진짜 서문시장 오면 무조건 먹어야 해요! 매콤달콤한 양념이 너무 맛있고 튀김이랑 같이 먹으니까 조합 최고에요!",
+        "date": "2026. 10. 12",
+        "photos": true,
+        "imageUrls": [
+          "/assets/85-581-imgImage52.png",
+          "/assets/85-581-imgImage54.png",
+          "/assets/85-581-imgImage59.png"
+        ]
+      }
+    ]
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.12 리뷰 작성
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/reviews`
+- **Request Body**:
+```json
+{
+  "orderId": "ord-20261101-002",
+  "rating": 5,
+  "text": "튀김이 정말 바삭바삭하고 떡볶이 국물에 찍어먹으니 환상이에요!",
+  "imageUrls": []
+}
+```
+- **Response (201 Created)**:
+```json
+{
+  "success": true,
+  "data": {
+    "reviewId": "rev-new-001",
+    "orderId": "ord-20261101-002",
+    "rating": 5,
+    "text": "튀김이 정말 바삭바삭하고 떡볶이 국물에 찍어먹으니 환상이에요!",
+    "authorName": "승우",
+    "date": "2026. 11. 01"
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.13 퀘스트 목록 조회
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/quests`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "daily": [
+      {
+        "id": "visit-3",
+        "title": "서문시장 가게 3곳 방문하기",
+        "current": 1,
+        "target": 3,
+        "rewardCoin": 300,
+        "status": "IN_PROGRESS"
+      },
+      {
+        "id": "review-1",
+        "title": "서문 분식 방문 후 리뷰 작성하기",
+        "current": 1,
+        "target": 2,
+        "rewardCoin": 200,
+        "status": "IN_PROGRESS"
+      },
+      {
+        "id": "photo-1",
+        "title": "사진 1장 찍기",
+        "current": 1,
+        "target": 1,
+        "rewardCoin": 100,
+        "status": "COMPLETED"
+      }
+    ],
+    "achievement": [],
+    "event": []
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.14 퀘스트 보상 수령
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/quests/{questId}/claim`
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "questId": "photo-1",
+    "rewardCoin": 100,
+    "currentBalance": 1100
+  },
+  "error": null
+}
+```
