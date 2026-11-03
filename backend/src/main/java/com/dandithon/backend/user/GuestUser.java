@@ -24,6 +24,15 @@ public class GuestUser {
     public long getExp() { return exp; }
     public long getNextLevelExp() { return nextLevelExp; }
     public Map<String,String> getEquipped() { return equipped; }
+    public void spend(long amount) {
+        if(amount<=0)throw com.dandithon.backend.common.ApiException.invalid("결제 금액을 확인해 주세요.");
+        if(balance<amount)throw new com.dandithon.backend.common.ApiException("INSUFFICIENT_BALANCE","보유 코인이 부족해요. 수량을 줄여 주세요.",org.springframework.http.HttpStatus.BAD_REQUEST);
+        balance-=amount;
+    }
+    public void reward(long amount) {
+        if(amount<=0)throw new IllegalArgumentException("Reward must be positive");
+        balance=Math.addExact(balance,amount);
+    }
     public void rename(String nickname) { this.nickname=nickname; }
     public void toggle(String slot, String id) {
         if(id.equals(equipped.get(slot))) equipped.remove(slot); else equipped.put(slot,id);

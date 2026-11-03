@@ -303,9 +303,9 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
         "name": "서문분식",
         "category": "분식",
         "waitTimeMinutes": 5,
-        "crowdLevel": "CALM",
-        "crowdLabel": "여유",
-        "npcCount": 2,
+        "crowdLevel": "NORMAL",
+        "crowdLabel": "보통",
+        "npcCount": 4,
         "tags": ["#매콤달콤", "#가성비", "#줄서는맛집", "#시장대표메뉴"]
       },
       {
@@ -313,9 +313,9 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
         "name": "시장칼국수",
         "category": "면요리",
         "waitTimeMinutes": 10,
-        "crowdLevel": "NORMAL",
-        "crowdLabel": "보통",
-        "npcCount": 4,
+        "crowdLevel": "CROWDED",
+        "crowdLabel": "혼잡",
+        "npcCount": 7,
         "tags": ["#따끈한육수", "#수제면", "#든든한한끼"]
       },
       {
@@ -404,6 +404,12 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 ---
 
 ### 4.9 코인 Mock 결제 및 주문 생성
+
+- **필수 헤더**: `Idempotency-Key: <주문별 고유 키>` (영문·숫자·`_`·`-`, 1~128자). 구매 버튼 1회에 키 1개를 생성하고 네트워크 재시도에는 같은 키를 보낸다. 같은 키와 같은 메뉴/수량은 같은 주문을 반환하며 재차 차감하지 않는다. 다른 주문에 키를 재사용하면 400이다.
+- 한 주문에는 한 가게의 메뉴만 포함한다. 수량은 정수 1~99, 메뉴 행은 1~16개이며 같은 메뉴를 여러 행에 중복 입력하면 400이다. 가격은 서버 카탈로그로 계산한다.
+- 코인 차감·주문·메뉴별 구매 횟수는 한 트랜잭션이다. 동시 요청도 잔액이 음수가 되거나 중복 집계되지 않는다.
+- 재시도 응답의 `remainingBalance`는 해당 주문 결제 당시 잔액이고, 현재 잔액은 `/users/me`로 조회한다. `status`는 조회 시점 상태, `readyAfterSeconds`는 총 시연 조리 시간 15초다.
+
 - **Method**: `POST`
 - **Endpoint**: `/api/v1/orders`
 - **Request Body**:
@@ -445,6 +451,9 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 ---
 
 ### 4.10 영수증 목록 조회
+
+한 주문에 여러 메뉴가 있으면 메뉴별 영수증 행이 생성되며 같은 `orderId`를 공유한다. 리뷰는 **주문 전체에 1개**이며 작성하면 해당 주문의 모든 행이 `reviewed`가 된다. 주문 후 15초의 시연 시간이 지나면 `ready`가 된다. 실제 조리 상태가 아니다. 날짜는 한국시간이며 ISO 8601 소수 초가 포함될 수 있다.
+
 - **Method**: `GET`
 - **Endpoint**: `/api/v1/orders/receipts`
 - **Response (200 OK)**:
@@ -525,6 +534,9 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 ---
 
 ### 4.12 리뷰 작성
+
+주문 전체당 1개만 작성한다. 별점은 정수 1~5, 내용은 앞뒤 공백 제거 후 Unicode 코드포인트 1~500자다. `imageUrls`는 생략 또는 빈 배열을 허용하며 최대 5개, 각 2,048자 이내의 `/assets/` 경로 또는 HTTPS 주소를 받는다. 파일 업로드·사진 인증 기능은 포함하지 않는다. 아직 조리 중이거나 이미 리뷰를 작성한 주문에는 `INVALID_ORDER_STATUS`를 반환한다. 리뷰 별점·개수는 저장된 리뷰에서 계산하며 최초에는 0이다. 작성자 닉네임은 작성 당시 값으로 보관한다.
+
 - **Method**: `POST`
 - **Endpoint**: `/api/v1/reviews`
 - **Request Body**:
@@ -555,6 +567,12 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 ---
 
 ### 4.13 퀘스트 목록 조회
+
+- 일일 기준은 **한국시간 자정**이다. 리뷰 등록 날짜 기준으로 당일 서문분식 리뷰 2개를 작성하면 `review-1`이 완료되며 200코인을 한 번 수령할 수 있다.
+- `status`: `IN_PROGRESS`, `COMPLETED`, `CLAIMED`. 다음 날에는 진행도가 0부터 계산되고 다시 수령할 수 있다. 이전 날짜 보상은 이월되지 않는다.
+- 방문·사진 미션은 인증 기능 연결 전까지 `current: 0`, `status: IN_PROGRESS`, `verificationPending: true`이며 보상 수령 불가다. 구매·가상 이동·리뷰 이미지 주소를 방문/촬영 인증으로 사용하지 않는다. 리뷰 미션의 `verificationPending`은 false다.
+- 아래 예시는 응답 구조 설명용이다. 기존 예시의 사진 완료 상태는 현재 구현에서는 제공하지 않는다.
+
 - **Method**: `GET`
 - **Endpoint**: `/api/v1/quests`
 - **Response (200 OK)**:
@@ -582,10 +600,11 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
       {
         "id": "photo-1",
         "title": "사진 1장 찍기",
-        "current": 1,
+        "current": 0,
         "target": 1,
         "rewardCoin": 100,
-        "status": "COMPLETED"
+        "status": "IN_PROGRESS",
+        "verificationPending": true
       }
     ],
     "achievement": [],
@@ -605,10 +624,19 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 {
   "success": true,
   "data": {
-    "questId": "photo-1",
-    "rewardCoin": 100,
-    "currentBalance": 1100
+    "questId": "review-1",
+    "rewardCoin": 200,
+    "currentBalance": 600
   },
   "error": null
 }
 ```
+
+
+## 5. BE2 구현 상태와 연동 유의사항
+
+- 가게 4곳·메뉴 16개는 기존 프론트 fixture를 옮긴 **시연 카탈로그**다. 목록/상세의 추가 필드 `mock: true`로 표시한다. 대기시간은 고정 샘플이며 AI 예측이 아니다. 기타 가게 메뉴 이미지는 아직 없으므로 `imageUrl: null`이다.
+- 혼잡도는 본 문서 1절 경계값을 따른다. 5분=보통, 10분=혼잡이다. 기존 FE Mock 함수와 경계값이 달라 HTTP 연결 시 맞춰야 한다.
+- 샘플 리뷰·주문·방문 기록을 실제 DB 초기 데이터로 생성하지 않는다. 위 응답 예시의 주문 번호/평점/진행도는 예시이며 API 실제 값이 우선이다.
+- FE는 아직 localStorage Mock API를 사용한다. 이번 작업은 서버 API 구현이며 FE HTTP 연결은 별도다. 특히 혼합 가게 장바구니를 가게별 요청으로 나누고 필수 Idempotency-Key를 전달해야 한다.
+- 전 API는 인증 없는 공용 게스트 userId 1이다. 실제 서비스 공개 전 사용자별 인증·데이터 분리가 필요하다.
