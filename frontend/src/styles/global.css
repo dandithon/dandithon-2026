@@ -25,7 +25,10 @@
 }
 @utility pixelated { image-rendering: pixelated; }
 
-.app-shell { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.app-shell { max-width: 402px; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+@media (max-width: 600px) and (orientation: portrait) {
+  .app-shell { max-width: none; }
+}
 
 /* A shared sheet settles from its current drag height without remounting the scene. */
 .store-sheet { transition: height 320ms cubic-bezier(.22,1,.36,1); }

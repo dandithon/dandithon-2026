@@ -26,5 +26,6 @@ dist/
 build/
 .gradle/
 node_modules/
+.vercel/
 *.log
 data/

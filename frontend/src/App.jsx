@@ -3,6 +3,7 @@ import ProfileDialog from './components/ProfileDialog';
 import FullMapDialog from './components/FullMapDialog';
 import {explorationApi,marketApi,live,validateMode} from './api/service';
 import {progression} from './game/progression';
+import {readProfile} from './game/profile';
 import {demoWaits} from './game/crowd';
 import StartPage from './pages/StartPage';
 import MarketPage from './pages/MarketPage';
@@ -23,6 +24,7 @@ export default function App(){
   const [completedOrders,setCompletedOrders]=useState([]);
   const [busy,setBusy]=useState(false),[toast,setToast]=useState(''),[scale,setScale]=useState(1);
   const [preferences,setPreferences]=useState(null),[loadError,setLoadError]=useState('');
+  const [profileError,setProfileError]=useState('');
   const progress=useMemo(()=>state&&preferences?progression(state,preferences):null,[state,preferences]);
   const loadId=useRef(0);
   const lock=useRef(false),toastTimer=useRef(),container=useRef(null);
@@ -40,7 +42,14 @@ export default function App(){
   useEffect(()=>{load();return()=>{loadId.current++;clearTimeout(toastTimer.current);};},[load]);
   useEffect(()=>{
     const element=container.current;
-    const resize=()=>{const style=getComputedStyle(element);const inset=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom);setScale(Math.min(1,element.clientWidth/402,Math.max(280,window.innerHeight-52-inset)/874));};
+    const resize=()=>{
+      const style=getComputedStyle(element);
+      const inset=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom);
+      // Portrait phones use their full width. Keep artwork and touch coordinates
+      // proportional; shorter screens can scroll instead of shrinking every control.
+      const portraitPhone=window.matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
+      setScale(portraitPhone?element.clientWidth/402:Math.min(1,element.clientWidth/402,Math.max(280,window.innerHeight-52-inset)/874));
+    };
     const observer=new ResizeObserver(resize);observer.observe(element);window.addEventListener('resize',resize);resize();
     return()=>{observer.disconnect();window.removeEventListener('resize',resize);};
   },[]);
@@ -49,18 +58,24 @@ export default function App(){
     const timer=setInterval(tick,1000);tick();return()=>{active=false;clearInterval(timer);};
   },[modal,notify]);
   const run=async task=>{if(lock.current)return;lock.current=true;setBusy(true);try{await task();return true;}catch(error){notify(error.message||'잠시 후 다시 시도해 주세요.');return false;}finally{lock.current=false;setBusy(false);}};
+  const refreshProfile=async()=>{
+    if(!live)return;
+    const {profile,error}=await readProfile(explorationApi);
+    setProfileError(error);
+    if(profile){setPreferences(profile);setState(current=>({...current,balance:profile.balance}));}
+  };
   const openModal=name=>{
     if(live && name==='quests')return run(async()=>{setState(await marketApi.refreshQuests());setModal(name);});
-    if(live && name==='profile')return run(async()=>{setPreferences(await explorationApi.load());setModal(name);});
+    if(live && name==='profile')return run(async()=>{await refreshProfile();setModal(name);});
     setModal(name);
   };
   const visit=id=>run(async()=>{setState(await marketApi.visit(id));setStoreId(id);setPage('store');setModal(null);});
   const favorite=()=>run(async()=>{setState(await marketApi.favorite(storeId));});
-  const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');});
+  const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');await refreshProfile();});
   const add=(id,q)=>run(async()=>{setState(await marketApi.addToCart(id,q));setModal(null);notify('메뉴를 담았어요. 화면 아래에서 담은 메뉴를 확인하세요.');});
   const openReview=id=>run(async()=>{const data=await marketApi.refreshOrders();setState(data);const ready=data.orders.find(o=>o.status==='ready'&&(id?o.id===id:menu.find(m=>m.id===o.itemId)?.storeId===storeId));if(!ready){notify('조리가 완료된 주문이 있어야 리뷰를 작성할 수 있어요.');return;}setStoreId(menu.find(m=>m.id===ready.itemId).storeId);setReviewOrder(ready.id);setModal('review');});
   const toMenu=next=>{setTab(next);setPage('menu');};
-  return <div ref={container} className="app-shell mx-auto w-full max-w-[402px]">
+  return <div ref={container} className="app-shell mx-auto w-full">
     <main className="relative mx-auto overflow-hidden shadow-2xl" style={{height:874*scale,width:402*scale}}>
       <div className="absolute left-0 top-0 h-[874px] w-[402px] origin-top-left bg-paper font-sans" style={{transform:`scale(${scale})`}}>
         {!state||!preferences?<section className="p-8 pt-40 text-center" aria-live="polite">{loadError?<><h1 className="font-retro text-xl">잠시 쉬어갈까요?</h1><p role="alert" className="my-6 break-words text-sm leading-6">{loadError}</p><button onClick={load} className="rounded-lg border-2 border-[#946034] bg-[#ffc857] px-5 py-3">다시 시도</button>{!live&&loadError.includes('프로필')&&<button className="mt-4 block w-full text-sm underline" onClick={async()=>{try{await explorationApi.resetPreferences();load();}catch(error){setLoadError(error.message);}}}>프로필 설정만 초기화 (주문·리뷰 유지)</button>}</>:<p>시장을 준비하고 있어요…</p>}</section>:<>
@@ -69,12 +84,12 @@ export default function App(){
             <div hidden={page!=='market'} className="size-full"><MarketPage preferences={preferences} progress={progress} waits={state.waits || demoWaits} active={page==='market'} state={state} onStore={visit} onModal={openModal} notify={notify} overlay={modal}/></div>
             {(page==='store'||page==='menu')&&<StoreExperience expanded={page==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/>}
           </div>
-          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} onEquip={id=>run(async()=>setPreferences(await explorationApi.equip(id)))} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
+          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={id=>run(async()=>setPreferences(await explorationApi.equip(id)))} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
           {modal==='map'&&<FullMapDialog zones={state.zones} onClose={close} onStore={visit} waits={state.waits || demoWaits} busy={busy}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
           {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
-          {modal==='quests'&&<QuestDialog state={state} onClose={close} onClaim={id=>run(async()=>{setState(await marketApi.claim(id));notify('보상 코인을 받았어요!');})} notify={notify} busy={busy}/>}
+          {modal==='quests'&&<QuestDialog state={state} onClose={close} onClaim={id=>run(async()=>{setState(await marketApi.claim(id));notify('보상 코인을 받았어요!');await refreshProfile();})} notify={notify} busy={busy}/>}
           {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={(id,text,rating)=>run(async()=>{setState(await marketApi.review(id,text,rating,preferences.nickname));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');})}/>}
           {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={items=>order(items,true)} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
         </>}
