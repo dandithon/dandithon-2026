@@ -1,6 +1,6 @@
 import React from 'react';
 import Dialog from './Dialog';
-import {menu,getStore} from '../mocks/fixtures';
+import {menu,getStore} from '../api/catalog';
 export default function PurchaseComplete({orders,onClose,onReceipts}){
   const total=orders.reduce((sum,o)=>sum+menu.find(m=>m.id===o.itemId).price*o.quantity,0);
   return <Dialog label="구매 완료" onClose={onClose}><section className="absolute inset-x-[26px] top-[240px] rounded-[28px] border-2 border-[#b78a55] bg-paper p-7 text-center shadow-xl">

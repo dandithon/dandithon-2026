@@ -17,6 +17,7 @@ export function purchaseCounts(orders=[]){
   return counts;
 }
 export function progression(state,preferences){
+  if(preferences.items)return {counts:preferences.counts,items:preferences.items,equipped:preferences.equipped};
   const counts=purchaseCounts(state.orders);
   const items=equipment.map(item=>({...item,count:counts[item.itemId]||0,unlocked:(counts[item.itemId]||0)>=item.required}));
   const equipped=Object.fromEntries(Object.entries(preferences.equipped||{}).filter(([slot,id])=>items.some(i=>i.id===id&&i.slot===slot&&i.unlocked)));
