@@ -5,6 +5,7 @@ import {explorationApi,marketApi,live,validateMode} from './api/service';
 import {progression} from './game/progression';
 import {readProfile} from './game/profile';
 import {sceneLayout} from './game/layout';
+import useModalMotion from './game/useModalMotion';
 import {demoWaits} from './game/crowd';
 import StartPage from './pages/StartPage';
 import MarketPage from './pages/MarketPage';
@@ -21,7 +22,8 @@ export default function App(){
   const [state,setState]=useState(null),[page,setPage]=useState(()=>location.hash.startsWith('#store')?'store':'start');
   const [storeId,setStoreId]=useState(()=>getStore(location.hash.split('/')[1]).id);
   const store=getStore(storeId);
-  const [tab,setTab]=useState('menu'),[modal,setModal]=useState(null),[selected,setSelected]=useState(null),[reviewOrder,setReviewOrder]=useState(null);
+  const [tab,setTab]=useState('menu'),[selected,setSelected]=useState(null),[reviewOrder,setReviewOrder]=useState(null);
+  const {modal,setModal,close,closing}=useModalMotion();
   const [completedOrders,setCompletedOrders]=useState([]);
   const [busy,setBusy]=useState(false),[toast,setToast]=useState(''),[layout,setLayout]=useState({scale:1,height:874});
   const {scale,height:sceneHeight}=layout;
@@ -30,7 +32,6 @@ export default function App(){
   const progress=useMemo(()=>state&&preferences?progression(state,preferences):null,[state,preferences]);
   const loadId=useRef(0);
   const lock=useRef(false),toastTimer=useRef(),container=useRef(null);
-  const close=useCallback(()=>setModal(null),[]);
   const notify=useCallback(message=>{setToast(message);clearTimeout(toastTimer.current);toastTimer.current=setTimeout(()=>setToast(''),5500);},[]);
   const load=useCallback(async()=>{
     const id=++loadId.current;setLoadError('');
@@ -87,9 +88,10 @@ export default function App(){
         {!state||!preferences?<section className="p-8 pt-40 text-center" aria-live="polite">{loadError?<><h1 className="font-retro text-xl">잠시 쉬어갈까요?</h1><p role="alert" className="my-6 break-words text-sm leading-6">{loadError}</p><button onClick={load} className="rounded-lg border-2 border-[#946034] bg-[#ffc857] px-5 py-3">다시 시도</button>{!live&&loadError.includes('프로필')&&<button className="mt-4 block w-full text-sm underline" onClick={async()=>{try{await explorationApi.resetPreferences();load();}catch(error){setLoadError(error.message);}}}>프로필 설정만 초기화 (주문·리뷰 유지)</button>}</>:<p>시장을 준비하고 있어요…</p>}</section>:<>
           <div className="size-full" inert={modal?true:undefined}>
             {page==='start'&&<StartPage onStart={()=>setPage('market')}/>}
-            <div hidden={page!=='market'} className="size-full"><MarketPage sceneHeight={sceneHeight} preferences={preferences} progress={progress} waits={state.waits || demoWaits} active={page==='market'} state={state} onStore={visit} onModal={openModal} notify={notify} overlay={modal}/></div>
+            <div hidden={page!=='market'} className={`size-full ${page==='market'?'scene-enter':''}`}><MarketPage sceneHeight={sceneHeight} preferences={preferences} progress={progress} waits={state.waits || demoWaits} active={page==='market'} state={state} onStore={visit} onModal={openModal} notify={notify} overlay={modal}/></div>
             {(page==='store'||page==='menu')&&<StoreExperience expanded={page==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/>}
           </div>
+          {modal&&<div key={modal} data-modal={modal} inert={closing?true:undefined} className={`modal-motion absolute inset-0 z-30 ${closing?'is-closing':''}`}>
           {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={id=>run(async()=>setPreferences(await explorationApi.equip(id)))} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
           {modal==='map'&&<FullMapDialog zones={state.zones} onClose={close} onStore={visit} waits={state.waits || demoWaits} busy={busy}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
@@ -98,6 +100,7 @@ export default function App(){
           {modal==='quests'&&<QuestDialog state={state} onClose={close} onClaim={id=>run(async()=>{setState(await marketApi.claim(id));notify('보상 코인을 받았어요!');await refreshProfile();})} notify={notify} busy={busy}/>}
           {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={(id,text,rating)=>run(async()=>{setState(await marketApi.review(id,text,rating,preferences.nickname));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');})}/>}
           {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={items=>order(items,true)} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
+          </div>}
         </>}
         {toast&&<div role="status" className="pointer-events-none absolute inset-x-[24px] bottom-[24px] z-50 rounded-xl border border-[#dec69c] bg-[#3c2b20f2] px-5 py-4 text-center text-[13px] leading-6 text-[#fff4de] shadow-xl">{toast}</div>}
       </div>
