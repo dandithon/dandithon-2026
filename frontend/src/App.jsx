@@ -40,7 +40,14 @@ export default function App(){
   useEffect(()=>{load();return()=>{loadId.current++;clearTimeout(toastTimer.current);};},[load]);
   useEffect(()=>{
     const element=container.current;
-    const resize=()=>{const style=getComputedStyle(element);const inset=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom);setScale(Math.min(1,element.clientWidth/402,Math.max(280,window.innerHeight-52-inset)/874));};
+    const resize=()=>{
+      const style=getComputedStyle(element);
+      const inset=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom);
+      // Portrait phones use their full width. Keep artwork and touch coordinates
+      // proportional; shorter screens can scroll instead of shrinking every control.
+      const portraitPhone=window.matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
+      setScale(portraitPhone?element.clientWidth/402:Math.min(1,element.clientWidth/402,Math.max(280,window.innerHeight-52-inset)/874));
+    };
     const observer=new ResizeObserver(resize);observer.observe(element);window.addEventListener('resize',resize);resize();
     return()=>{observer.disconnect();window.removeEventListener('resize',resize);};
   },[]);
@@ -55,7 +62,7 @@ export default function App(){
   const add=(id,q)=>run(async()=>{setState(await marketApi.addToCart(id,q));setModal(null);notify('메뉴를 담았어요. 화면 아래에서 담은 메뉴를 확인하세요.');});
   const openReview=id=>run(async()=>{const data=await marketApi.refreshOrders();setState(data);const ready=data.orders.find(o=>o.status==='ready'&&(id?o.id===id:menu.find(m=>m.id===o.itemId)?.storeId===storeId));if(!ready){notify('조리가 완료된 주문이 있어야 리뷰를 작성할 수 있어요.');return;}setStoreId(menu.find(m=>m.id===ready.itemId).storeId);setReviewOrder(ready.id);setModal('review');});
   const toMenu=next=>{setTab(next);setPage('menu');};
-  return <div ref={container} className="app-shell mx-auto w-full max-w-[402px]">
+  return <div ref={container} className="app-shell mx-auto w-full">
     <main className="relative mx-auto overflow-hidden shadow-2xl" style={{height:874*scale,width:402*scale}}>
       <div className="absolute left-0 top-0 h-[874px] w-[402px] origin-top-left bg-paper font-sans" style={{transform:`scale(${scale})`}}>
         {!state||!preferences?<section className="p-8 pt-40 text-center" aria-live="polite">{loadError?<><h1 className="font-retro text-xl">잠시 쉬어갈까요?</h1><p role="alert" className="my-6 break-words text-sm leading-6">{loadError}</p><button onClick={load} className="rounded-lg border-2 border-[#946034] bg-[#ffc857] px-5 py-3">다시 시도</button>{loadError.includes('프로필')&&<button className="mt-4 block w-full text-sm underline" onClick={async()=>{try{await explorationApi.resetPreferences();load();}catch(error){setLoadError(error.message);}}}>프로필 설정만 초기화 (주문·리뷰 유지)</button>}</>:<p>시장을 준비하고 있어요…</p>}</section>:<>
