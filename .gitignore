@@ -20,6 +20,8 @@ Thumbs.db
 !.env.example
 *.pem
 *.key
+*audit*
+*security*
 
 # Build and Temp Directories
 dist/
