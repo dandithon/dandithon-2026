@@ -17,33 +17,56 @@
 
 ## 2. 기술 스택
 
-> 개발팀 확인 후 최종 확정
+> 2026 단디톤 개발팀 확정 스택
 
-| 구분 | 기술 | 비고 |
+| 구분 | 기술 | 세부 사양 및 비고 |
 |---|---|---|
-| Frontend | React | React Native 여부 확인 필요 |
-| Backend | Spring | Spring Boot 여부 확인 필요 |
-| Database | TBD | 개발팀 결정 |
-| 지도 및 위치 | TBD | 개발팀 결정 |
-| AI 예상시간 | TBD | 개발팀 결정 |
-| 배포 환경 | TBD | 개발팀 결정 |
+| **Frontend** | React 18, Vite | 픽셀 아트 렌더링(HTML5 Canvas API), Lucide React 아이콘 |
+| **Backend** | Java 21, Spring Boot | Spring Boot 4.1.2 (Tomcat 11), Spring Data JPA, Hibernate 7 |
+| **Database** | MariaDB 11.2, H2 | 운영: CloudType MariaDB 11.2 / 로컬: H2 (File 모드) |
+| **DB Migration** | Flyway | 스키마 버전 관리 (`V1__be1_schema.sql`, `V2__be2_schema.sql`) |
+| **API Docs** | Springdoc OpenAPI | OpenAPI 3.1 명세 자동화 및 Swagger UI |
+| **배포 환경** | CloudType | 클라우드 컨테이너 호스팅, 자동 HTTPS 및 도메인 라우팅 |
+| **CI / CD** | GitHub + CloudType | `main` 브랜치 머지 시 Git Webhook 기반 무중단 자동 재배포 |
+| **지도 및 위치** | Canvas 2D + GPS / 조이스틱 | 2D 그리드 좌표계 기반 충돌 및 이동 시뮬레이션 |
+| **혼잡도 / AI** | 4단계 혼잡도 산출 엔진 | 대기시간(0~5, 5~10, 10~20, 20+) 매핑 및 NPC 대기열 렌더링 |
 
 ---
 
 ## 3. 시스템 구성도
 
-> FE·BE 개발팀 작성 예정
+```mermaid
+flowchart TD
+    subgraph Client ["클라이언트 레이어"]
+        User["사용자 (모바일 / 웹 브라우저)"]
+    end
 
-아래 항목의 연결 구조를 확정한 후 시스템 구성도를 추가합니다.
+    subgraph Frontend ["프론트엔드 (React 18 + Vite)"]
+        CanvasMap["2D 픽셀 아트 캔버스 맵 & 조이스틱"]
+        UI["RPG UI (상점/영수증/프로필/퀘스트)"]
+        APIAxios["API Client (REST)"]
+    end
 
-- 사용자 클라이언트
-- 프론트엔드
-- 백엔드 API 서버
-- 데이터베이스
-- GPS 및 위치 관련 기능
-- 예상 대기시간 데이터 처리
+    subgraph Backend ["백엔드 클라우드 서비스 (CloudType / Java 21)"]
+        Tomcat["Spring Boot 4.1.2 (Tomcat 8080)"]
+        CORS["WebConfig (전역 CORS & Idempotency-Key 노출)"]
+        Controllers["Controllers (Market / Profile / Quest / Map)"]
+        Services["Services (비관적 락 & 멱등성 검증)"]
+        Swagger["Springdoc OpenAPI 3.1 (/swagger-ui/index.html)"]
+    end
 
-※ 시스템 구성 요소는 실제 구현 방식에 따라 변경될 수 있습니다.
+    subgraph Database ["데이터베이스 레이어 (CloudType MariaDB 11.2)"]
+        Flyway["Flyway Migration Engine (V1, V2)"]
+        DB[(dandithon DB - 3306)]
+    end
+
+    User --> CanvasMap & UI
+    CanvasMap & UI --> APIAxios
+    APIAxios -- "HTTPS (port-0-dandithon-backend...)" --> Tomcat
+    Tomcat --> CORS --> Controllers --> Services
+    Services --> DB
+    Flyway --> DB
+```
 
 ---
 
@@ -171,16 +194,17 @@
 
 ## 6. 개발 및 배포 환경
 
-> 개발팀 작성 예정
-
 | 항목 | 내용 |
 |---|---|
-| 개발 환경 | TBD |
-| 실행 방법 | TBD |
-| 테스트 환경 | TBD |
-| 배포 환경 | TBD |
-| CI/CD | TBD |
-| 환경 변수 관리 | TBD |
+| **백엔드 배포 환경** | CloudType (Java 21, Spring Boot 4.1.2 실행 컨테이너) |
+| **데이터베이스 배포 환경** | CloudType (MariaDB 11.2 인스턴스, 내부 포트 3306) |
+| **프론트엔드 실행 환경** | Node.js 18+, Vite 개발 서버 (`http://localhost:5173`) |
+| **운영 API 도메인** | `https://port-0-dandithon-backend-mw1mk9y6e7f0b691.sel3.cloudtype.app` |
+| **Swagger UI** | `https://port-0-dandithon-backend-mw1mk9y6e7f0b691.sel3.cloudtype.app/swagger-ui/index.html` |
+| **CI / CD 파이프라인** | GitHub `main` 브랜치 머지 시 CloudType 자동 Webhook 트리거 ➔ 빌드(`bootJar`) 및 무중단 재배포 |
+| **로컬 백엔드 실행 방법** | `./gradlew bootRun` (내장 H2 파일 DB 모드로 환경변수 없이 단독 구동 가능) |
+| **통합 테스트 실행** | `./gradlew test` (Be1, Be2 통합 테스트 총 21개 검증) |
+| **주요 환경 변수** | `SPRING_PROFILES_ACTIVE`, `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `SPRING_JPA_DATABASE_PLATFORM`, `SERVER_ADDRESS` |
 
 ---
 

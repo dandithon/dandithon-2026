@@ -244,18 +244,34 @@ Mock 주문 상태 데이터를 활용합니다.
 
 ---
 
+## 🌐 배포 및 라이브 데모 (Live Deployment)
+
+현재 백엔드 API 서버 및 대화형 API 문서가 클라우드 환경에 배포되어 있습니다.
+
+| 항목 | URL / 경로 | 설명 |
+|---|---|---|
+| **API Base URL** | `https://port-0-dandithon-backend-mw1mk9y6e7f0b691.sel3.cloudtype.app` | 백엔드 실서버 엔드포인트 |
+| **Swagger UI** | [Swagger API 문서 바로가기](https://port-0-dandithon-backend-mw1mk9y6e7f0b691.sel3.cloudtype.app/swagger-ui/index.html) | OpenAPI 3.1 대화형 API 명세 및 테스트 |
+| **상태 확인 (Health)** | `GET /api/v1/users/me` | 게스트 사용자 및 시스템 상태 확인 |
+
+> [!NOTE]
+> 클라우드 배포 서버에는 프론트엔드 연동을 위한 전역 CORS(`allowedOriginPatterns("*")`, `Idempotency-Key` 헤더 노출) 설정이 적용되어 있어 로컬 개발 서버(`localhost:5173`) 및 배포 웹 클라이언트에서 즉시 통신이 가능합니다.
+
+---
+
 ## 🛠️ 기술 스택
 
-> 기술 스택은 개발팀 협의 후 확정하여 업데이트할 예정입니다.
-
-| 구분 | 기술 |
-|---|---|
-| Frontend | 추후 확정 |
-| Backend | 추후 확정 |
-| Database | 추후 확정 |
-| AI | 추후 확정 |
-| Design | Figma |
-| Collaboration | GitHub |
+| 구분 | 기술 / 라이브러리 | 세부 내용 및 버전 |
+|---|---|---|
+| **Frontend** | React 18, Vite | 픽셀 아트 렌더링(HTML5 Canvas), 반응형 웹, Lucide React |
+| **Backend** | Spring Boot, Java 21 | Spring Boot 4.1.2 (Tomcat 11), Spring Data JPA, Hibernate 7 |
+| **Database** | MariaDB, H2 | 운영: MariaDB 11.2 (CloudType Managed) / 로컬: H2 (File-mode) |
+| **Migration** | Flyway | 스키마 형상 관리 (`V1__be1_schema.sql`, `V2__be2_schema.sql`) |
+| **API Docs** | Springdoc OpenAPI | OpenAPI 3.1 명세 자동화 및 Swagger UI 제공 |
+| **Infrastructure** | CloudType | 컨테이너 기반 클라우드 호스팅, HTTPS 도메인 기본 라우팅 |
+| **CI / CD** | GitHub + CloudType Webhook | `main` 브랜치 머지 시 자동 빌드 및 무중단 재배포 |
+| **Design** | Figma | 13개 핵심 화면 및 2D 픽셀 아트 캐릭터/아이템 에셋 |
+| **Collaboration** | GitHub | Issue-Branch-PR 기반 워크플로우, Convention 준수 |
 
 ---
 
@@ -394,64 +410,4 @@ dandithon-2026/
 
 *지역에서 발견한 가치, 세상을 위한 새로운 경험으로*
 
-</div>| 🍜 메뉴 탐색 | 가게별 대표 메뉴 및 한 줄 소개 확인 |
-| ⭐ 리뷰 시스템 | 가게별 리뷰 조회 및 작성 |
-| 📋 퀘스트 | 시장 탐험 미션 수행 및 코인 보상 |
-| 👥 웨이팅 시각화 | 가게의 혼잡도를 캐릭터로 표현 (시연용 데이터) |
-
-※ 세부 기능은 개발 과정에서 변경될 수 있습니다.
-
-## 👥 팀 구성
-
-| 역할 | 인원 |
-|------|------|
-| 기획 (PM) | 1명 |
-| UI/UX 디자인 | 1명 |
-| Frontend | 2명 |
-| Backend | 2명 |
-
-## 🛠️ 기술 스택
-
-추후 개발팀 협의를 통해 확정할 예정입니다.
-
-## 📁 프로젝트 구조
-
-```text
-dandithon-2026/
-├── frontend/        # 프론트엔드
-├── backend/         # 백엔드
-├── design/          # 디자인
-├── docs/            # 기획 및 기술 문서
-├── .github/         # GitHub 협업 설정
-├── AGENTS.md        # AI 에이전트 작업 지침
-├── CLAUDE.md        # Claude Code 작업 지침
-├── CONTRIBUTING.md  # 협업 가이드
-└── README.md        # 프로젝트 소개
-```
-
-※ 위 구조는 목표 디렉터리 구조이며, 초기에는 일부 파일이 없을 수 있습니다.
-
-## 📅 프로젝트 일정
-
-| 기간 | 진행 내용 |
-|------|-----------|
-| 10/10 ~ 10/19 | 아이디어 선정 및 서비스 기획 |
-| 10/20 ~ 10/27 | 중간고사 기간 |
-| 10/28 ~ 11/05 | 핵심 기능 개발 및 서비스 연동 |
-| 11/06 ~ 11/09 | 통합 테스트 및 최종 보완 |
-| 11/10 | 최종 결과물 제출 |
-| 11/21 | 단디톤 본 행사 |
-
-## 📚 프로젝트 문서
-
-- [서비스 기획서](docs/PRD.md)
-- [시스템 아키텍처](docs/ARCHITECTURE.md)
-- [API 명세서](docs/API.md)
-- [작업 관리](docs/TASKS.md)
-- [협업 가이드](CONTRIBUTING.md)
-
-※ 문서는 프로젝트 진행에 따라 순차적으로 추가됩니다.
-
----
-
-**2026 단디톤 | 지역에서 발견한 가치, 세상을 위한 새로운 경험으로**
+</div>
