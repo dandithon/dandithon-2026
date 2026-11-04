@@ -2,6 +2,7 @@ import React,{useEffect,useState} from 'react';
 import MapArtwork from '../components/MapArtwork';
 import manifest from '../assets/figma.json';
 import useExploration from '../game/useExploration';
+import {getStore} from '../api/catalog';
 import CrowdLayer from '../components/CrowdLayer';
 import useGeolocation,{locationMessages} from '../game/useGeolocation';
 import {mapCalibration} from '../game/mapCalibration';
@@ -20,7 +21,7 @@ export default function MarketPage({state,onStore,onModal,notify,overlay,active=
     <button aria-label="칼국수 가게 방문" onClick={()=>onStore('noodle')} className="absolute left-[268px] top-[136px] h-[140px] w-[58px]"/>
     <button aria-label="호떡 가게 방문" onClick={()=>onStore('hotteok')} className="absolute left-[10px] top-[493px] h-[155px] w-[150px]"/>
     <button aria-label="커피 디저트 가게 방문" onClick={()=>onStore('coffee')} className="absolute left-[270px] top-[493px] h-[155px] w-[122px]"/>
-        <CrowdLayer minutes={waits.seomun}/>
+        <CrowdLayer store={getStore('seomun')} minutes={waits.seomun}/>
       </MapArtwork>
     </div>
     <div className="pointer-events-none absolute inset-0"><MapArtwork assets={manifest[screen]} nickname={preferences.nickname} balance={state.balance} joystick={joystick} stick={stick}/></div>

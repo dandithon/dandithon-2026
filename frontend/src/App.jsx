@@ -1,7 +1,7 @@
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import ProfileDialog from './components/ProfileDialog';
 import FullMapDialog from './components/FullMapDialog';
-import {explorationApi} from './api/exploration';
+import {explorationApi,marketApi,live,validateMode} from './api/service';
 import {progression} from './game/progression';
 import {demoWaits} from './game/crowd';
 import StartPage from './pages/StartPage';
@@ -12,8 +12,8 @@ import ReceiptDialog from './components/ReceiptDialog';
 import QuestDialog from './components/QuestDialog';
 import PurchaseComplete from './components/PurchaseComplete';
 import {ReviewEditor,CartDialog} from './components/ExtraDialogs';
-import {getStore,menu} from './mocks/fixtures';
-import {marketApi} from './api/market';
+import {getStore,menu} from './api/catalog';
+
 
 export default function App(){
   const [state,setState]=useState(null),[page,setPage]=useState(()=>location.hash.startsWith('#store')?'store':'start');
@@ -31,7 +31,7 @@ export default function App(){
   const load=useCallback(async()=>{
     const id=++loadId.current;setLoadError('');
     try{
-      if(import.meta.env.VITE_DATA_MODE&&import.meta.env.VITE_DATA_MODE!=='mock')throw Error('실제 API 연결이 준비되지 않았어요. 시연 모드 설정을 확인해 주세요.');
+      validateMode();
       const [data,profile]=await Promise.all([marketApi.load(),explorationApi.load()]);
       if(!data||!Number.isFinite(data.balance)||!['orders','reviews','cart','claimed','visits','favorites'].every(key=>Array.isArray(data[key])))throw Error('시장 저장 정보 형식을 확인할 수 없어요. 기존 데이터를 확인해 주세요.');
       if(id===loadId.current){setState(data);setPreferences(profile);}
@@ -49,6 +49,11 @@ export default function App(){
     const timer=setInterval(tick,1000);tick();return()=>{active=false;clearInterval(timer);};
   },[modal,notify]);
   const run=async task=>{if(lock.current)return;lock.current=true;setBusy(true);try{await task();return true;}catch(error){notify(error.message||'잠시 후 다시 시도해 주세요.');return false;}finally{lock.current=false;setBusy(false);}};
+  const openModal=name=>{
+    if(live && name==='quests')return run(async()=>{setState(await marketApi.refreshQuests());setModal(name);});
+    if(live && name==='profile')return run(async()=>{setPreferences(await explorationApi.load());setModal(name);});
+    setModal(name);
+  };
   const visit=id=>run(async()=>{setState(await marketApi.visit(id));setStoreId(id);setPage('store');setModal(null);});
   const favorite=()=>run(async()=>{setState(await marketApi.favorite(storeId));});
   const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');});
@@ -58,14 +63,14 @@ export default function App(){
   return <div ref={container} className="app-shell mx-auto w-full max-w-[402px]">
     <main className="relative mx-auto overflow-hidden shadow-2xl" style={{height:874*scale,width:402*scale}}>
       <div className="absolute left-0 top-0 h-[874px] w-[402px] origin-top-left bg-paper font-sans" style={{transform:`scale(${scale})`}}>
-        {!state||!preferences?<section className="p-8 pt-40 text-center" aria-live="polite">{loadError?<><h1 className="font-retro text-xl">잠시 쉬어갈까요?</h1><p role="alert" className="my-6 break-words text-sm leading-6">{loadError}</p><button onClick={load} className="rounded-lg border-2 border-[#946034] bg-[#ffc857] px-5 py-3">다시 시도</button>{loadError.includes('프로필')&&<button className="mt-4 block w-full text-sm underline" onClick={async()=>{try{await explorationApi.resetPreferences();load();}catch(error){setLoadError(error.message);}}}>프로필 설정만 초기화 (주문·리뷰 유지)</button>}</>:<p>시장을 준비하고 있어요…</p>}</section>:<>
+        {!state||!preferences?<section className="p-8 pt-40 text-center" aria-live="polite">{loadError?<><h1 className="font-retro text-xl">잠시 쉬어갈까요?</h1><p role="alert" className="my-6 break-words text-sm leading-6">{loadError}</p><button onClick={load} className="rounded-lg border-2 border-[#946034] bg-[#ffc857] px-5 py-3">다시 시도</button>{!live&&loadError.includes('프로필')&&<button className="mt-4 block w-full text-sm underline" onClick={async()=>{try{await explorationApi.resetPreferences();load();}catch(error){setLoadError(error.message);}}}>프로필 설정만 초기화 (주문·리뷰 유지)</button>}</>:<p>시장을 준비하고 있어요…</p>}</section>:<>
           <div className="size-full" inert={modal?true:undefined}>
             {page==='start'&&<StartPage onStart={()=>setPage('market')}/>}
-            <div hidden={page!=='market'} className="size-full"><MarketPage preferences={preferences} progress={progress} waits={demoWaits} active={page==='market'} state={state} onStore={visit} onModal={setModal} notify={notify} overlay={modal}/></div>
+            <div hidden={page!=='market'} className="size-full"><MarketPage preferences={preferences} progress={progress} waits={state.waits || demoWaits} active={page==='market'} state={state} onStore={visit} onModal={openModal} notify={notify} overlay={modal}/></div>
             {(page==='store'||page==='menu')&&<StoreExperience expanded={page==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/>}
           </div>
           {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} onEquip={id=>run(async()=>setPreferences(await explorationApi.equip(id)))} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
-          {modal==='map'&&<FullMapDialog onClose={close} onStore={visit} waits={demoWaits} busy={busy}/>}
+          {modal==='map'&&<FullMapDialog zones={state.zones} onClose={close} onStore={visit} waits={state.waits || demoWaits} busy={busy}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
           {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
@@ -76,6 +81,6 @@ export default function App(){
         {toast&&<div role="status" className="pointer-events-none absolute inset-x-[24px] bottom-[24px] z-50 rounded-xl border border-[#dec69c] bg-[#3c2b20f2] px-5 py-4 text-center text-[13px] leading-6 text-[#fff4de] shadow-xl">{toast}</div>}
       </div>
     </main>
-    <footer className="flex items-center justify-between gap-4 px-4 py-3 text-[11px] text-[#d5dacb]"><span>프론트엔드 데모 · 실제 주문/결제 없음</span><button onClick={()=>{setModal(null);setPage('start');}} className="underline underline-offset-4">처음으로</button></footer>
+    <footer className="flex items-center justify-between gap-4 px-4 py-3 text-[11px] text-[#d5dacb]"><span>{live?'서버 연결 · 공용 게스트 · 게임 코인':'프론트엔드 데모 · 실제 주문/결제 없음'}</span><button onClick={()=>{setModal(null);setPage('start');}} className="underline underline-offset-4">처음으로</button></footer>
   </div>;
 }
