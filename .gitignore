@@ -1,0 +1,30 @@
+# Operating System Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE and Editors
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Build and Temp Directories
+dist/
+build/
+.gradle/
+node_modules/
+*.log
+data/
