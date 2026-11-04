@@ -48,12 +48,12 @@ export default function MapArtwork({ assets, nickname = '승우', equipped = {},
           <img alt="" className="absolute h-full left-[-12.39%] max-w-none top-[-0.27%] w-[117.18%]" src={imgImage13} />
         </div>
       </div>
-      <div className="absolute h-[219px] left-[-23px] top-[630px] w-[240px]" style={{ display: joystick ? undefined : "none" }} data-node-id="40:58" data-name="image 15">
+      <div className="market-bottom-control absolute h-[219px] left-[-23px] top-[630px] w-[240px]" style={{ display: joystick ? undefined : "none" }} data-node-id="40:58" data-name="image 15">
         <div className="absolute rounded-full" style={{left:82,top:77,width:76,height:76,background:"#66584e"}}/>
         <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage15} style={{maskImage:"radial-gradient(circle at 50% 52.5%, transparent 36px, black 37px)"}} />
         <img alt="" className="absolute inset-0 pointer-events-none size-full" src={imgImage15} style={{clipPath:"circle(37px at 50% 52.5%)",transform:`translate(${stick.x}px, ${stick.y}px)`}} />
       </div>
-      <div className="absolute h-[63px] left-[306px] top-[761px] w-[93px]" data-node-id="40:64" data-name="image 16">
+      <div className="market-bottom-control absolute h-[63px] left-[306px] top-[761px] w-[93px]" data-node-id="40:64" data-name="image 16">
         <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage16} />
       </div>
       <div className="absolute contents left-[189px] top-[52px]" data-node-id="40:83">
