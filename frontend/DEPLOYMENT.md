@@ -6,8 +6,8 @@
 
 - Backend Base URL: https://port-0-dandithon-backend-mw1mk9y6e7f0b691.sel3.cloudtype.app
 - Swagger: https://port-0-dandithon-backend-mw1mk9y6e7f0b691.sel3.cloudtype.app/swagger-ui/index.html
-- [ ] 강보성: 공통 HTTP 요청·오류 처리·서버/Mock 전환과 가게·구매·영수증·리뷰·퀘스트 API 연결
-- [ ] 조웅: 사용자 초기 로딩·프로필·닉네임·장비·배지·구매 횟수·대기시간을 실제 API에 연결하고 구매·리뷰·보상 이후 관련 화면 갱신
+- [x] 강보성 PR #14: 공통 HTTP 요청·오류 처리·서버/Mock 전환과 가게·구매·영수증·리뷰·퀘스트 API 기본 연결
+- [x] 조웅: 기존 프로필 API 기반 위에서 구매·보상 후 프로필 갱신, 실패·재시도, 서버 음식·배지 및 혼잡도 누락 처리 보완 (로컬 검증)
 - [ ] 공동: 배포된 Vercel 주소에서 CORS와 사용자 식별 정책, 실패·재시도·새로고침 후 상태 유지 확인
 - [ ] 공동: 배포 URL에서 시작→탐험→가게→구매→영수증→리뷰→퀘스트→프로필 통합 검증
 
@@ -27,7 +27,7 @@
 
 재배포 `dpl_7Q3iUiGcT5kxT9Ak4ALoNQQYSC3p`는 Vercel에서 커밋 작성자의 프로젝트 배포 권한 부족으로 Blocked 상태다. 이 수정은 공개 사이트에 아직 반영되지 않았다. Vercel 계정의 GitHub 연결 및 작성자 접근 권한 확인 후 다시 배포한다.
 
-환경 변수는 `.env` 파일 업로드 대신 Vercel 프로젝트 Environment Variables에서 관리한다. 현재 CLI 배포는 `--build-env VITE_DATA_MODE=mock`을 사용한다. 향후 자동 배포에도 같은 변수를 등록해야 한다. 실제 API 주소는 HTTP 연동 구현과 함께 추가하며 DB 비밀번호 등 서버 비밀값은 프론트에 설정하지 않는다.
+환경 변수는 `.env` 파일 업로드 대신 Vercel 프로젝트 Environment Variables에서 관리한다. 현재 프로젝트 Production·Preview에는 `VITE_DATA_MODE=mock`이 저장돼 있다. 실제 API 연결 배포 시 `VITE_DATA_MODE=live`와 `.env.example`의 `VITE_API_BASE_URL`을 함께 설정하고 다시 빌드한다. DB 비밀번호 등 서버 비밀값은 프론트에 설정하지 않는다.
 
 ### 2026-11-04 최초 배포 기록
 
