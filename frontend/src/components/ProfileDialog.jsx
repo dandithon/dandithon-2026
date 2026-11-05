@@ -34,7 +34,7 @@ export default function ProfileDialog({state,preferences,progress,onClose,onEqui
               <div className="absolute left-[19px] top-[28px] size-[190px]"><PlayerCharacter direction="down" equipped={equipped}/></div>
             </div>
             <div className="flex w-[78px] flex-col justify-between">
-              {['head','body','feet'].map(slot=>{const item=items.find(i=>i.slot===slot),worn=item && equipped[slot]===item.id;if(!item)return null;return <button key={slot} disabled={busy||!item.unlocked} aria-label={`${item.name} ${worn?'해제':'착용'}`} aria-pressed={worn} onClick={()=>onEquip(item.id)} className="relative h-[76px] rounded-[10px] border border-[#c9a989] bg-[#fff7ea] disabled:opacity-50"><img alt="" src={art.profile[item.image]} className="mx-auto h-[44px] w-[64px]"/><span className="absolute inset-x-0 bottom-1 text-[10px]">{worn?'착용 중':item.unlocked?'착용하기':'잠김'}</span></button>;})}
+              {['head','body','feet'].map(slot=>{const item=items.find(i=>i.slot===slot),worn=item && equipped[slot]===item.id;if(!item)return null;return <button key={slot} disabled={busy||!item.unlocked} aria-label={`${item.name} ${worn?'해제':'착용'}`} aria-pressed={worn} onClick={()=>onEquip(item.id)} className="relative h-[76px] rounded-[10px] border border-[#c9a989] bg-[#fff7ea] disabled:opacity-50"><img alt="" src={art.profile[item.image]} className={`mx-auto h-[44px] w-[64px] ${worn?'opacity-100':'opacity-40'}`}/><span className="absolute inset-x-0 bottom-1 text-[10px]">{worn?'착용 중':item.unlocked?'착용하기':'잠김'}</span></button>;})}
             </div>
           </div>
           <h3 className="mx-[28px] mb-2 mt-4 font-retro text-[15px]">보유 아이템</h3>

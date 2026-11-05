@@ -1,4 +1,5 @@
 import { menu, initialState, stores } from '../mocks/fixtures.js';
+import {validateCharge} from '../game/coins.js';
 const KEY='hackton-market-demo-v1';
 const fresh=()=>structuredClone(initialState);
 function read(){try{const s=JSON.parse(localStorage.getItem(KEY));return s?.version===1?s.data:fresh();}catch{return fresh();}}
@@ -11,6 +12,8 @@ function current(){
 // Replace these asynchronous adapter methods with the team's agreed server API.
 // This demo never submits a real order or charges money.
 export const marketApi={
+  async charge(amount){validateCharge(amount);const s=current();if(!Number.isSafeInteger(s.balance+amount))throw Error('보유 코인을 확인해 주세요.');s.balance+=amount;return {state:save(s),user:{balance:s.balance}};},
+  async syncBalance(){return {state:structuredClone(current()),user:{balance:current().balance}};},
   async load(){return structuredClone(current());},
   async favorite(storeId='seomun'){if(!stores.some(s=>s.id===storeId))throw Error('가게를 확인해 주세요.');const s=current();s.favorites=s.favorites.includes(storeId)?s.favorites.filter(id=>id!==storeId):[...s.favorites,storeId];s.favorite=s.favorites.includes('seomun');return save(s);},
   async visit(id){if(!stores.some(s=>s.id===id))throw Error('가게를 확인해 주세요.');if(!current().visits.includes(id))current().visits.push(id);return save(current());},

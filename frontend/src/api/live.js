@@ -1,5 +1,6 @@
 import {menu, useServerCatalog} from './catalog.js';
 import {equipment} from '../game/progression.js';
+import {validateCharge,confirmedBalance} from '../game/coins.js';
 
 const lineId = (orderId, menuId) => orderId + ':' + menuId;
 const receiptLine = row => ({...row, id:lineId(row.orderId,row.menuId), itemId:row.menuId});
@@ -37,6 +38,17 @@ export function createLiveApi(request, storage) {
     }
   };
   const market={
+    async charge(amount){
+      validateCharge(amount);
+      const user=await request('/users/me/charge',{method:'POST',body:{amount}});
+      state.balance=confirmedBalance(user);preferences={...preferences,...user};
+      return {state:snapshot(),user};
+    },
+    async syncBalance(){
+      const user=await request('/users/me');
+      state.balance=confirmedBalance(user);preferences={...preferences,...user};
+      return {state:snapshot(),user};
+    },
     async load(){
       try {
         const saved=JSON.parse(storage.getItem(key));

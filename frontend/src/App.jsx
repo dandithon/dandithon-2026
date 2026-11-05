@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import ProfileDialog from './components/ProfileDialog';
 import FullMapDialog from './components/FullMapDialog';
+import CoinDialog from './components/CoinDialog';
 import {explorationApi,marketApi,live,validateMode} from './api/service';
 import {progression} from './game/progression';
 import {readProfile} from './game/profile';
@@ -76,6 +77,14 @@ export default function App(){
     if(live && name==='profile')return run(async()=>{await refreshProfile();setModal(name);});
     setModal(name);
   };
+  const updateCoins=async amount=>{
+    if(lock.current)throw Error('다른 요청을 처리하고 있어요. 잠시 후 다시 확인해 주세요.');
+    lock.current=true;setBusy(true);
+    try{
+      const result=amount===undefined?await marketApi.syncBalance():await marketApi.charge(amount);
+      setState(result.state);setPreferences(current=>({...current,...result.user}));
+    }finally{lock.current=false;setBusy(false);}
+  };
   const visit=id=>run(async()=>{setState(await marketApi.visit(id));setStoreId(id);setPage('store');setModal(null);});
   const favorite=()=>run(async()=>{setState(await marketApi.favorite(storeId));});
   const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');await refreshProfile();});
@@ -92,6 +101,7 @@ export default function App(){
             {(page==='store'||page==='menu')&&<StoreExperience expanded={page==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/>}
           </div>
           {modal&&<div key={modal} data-modal={modal} inert={closing?true:undefined} className={`modal-motion absolute inset-0 z-30 ${closing?'is-closing':''}`}>
+          {modal==='coins'&&<CoinDialog balance={state.balance} busy={busy} live={live} onClose={close} onCharge={updateCoins} onCheckBalance={()=>updateCoins()}/>}
           {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={id=>run(async()=>setPreferences(await explorationApi.equip(id)))} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
           {modal==='map'&&<FullMapDialog zones={state.zones} onClose={close} onStore={visit} waits={state.waits || demoWaits} busy={busy}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
