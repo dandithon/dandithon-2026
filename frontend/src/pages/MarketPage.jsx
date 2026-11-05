@@ -47,9 +47,8 @@ export default function MarketPage({state,onStore,onModal,notify,overlay,active=
     {!joystick&&<section role="status" className="absolute bottom-[125px] left-5 right-5 rounded-xl border border-[#c9a989] bg-paper p-3 text-xs leading-5 shadow"><p>GPS 모드 · {locationMessages[gps.status]}</p>{gps.accuracy!==undefined&&<p>현재 위치 오차 약 {gps.accuracy}m</p>}{gps.status!=='mapped'&&<p>캐릭터는 마지막 위치에 표시돼요. 실제 방문은 기록하지 않아요.</p>}{['denied','timeout','unavailable'].includes(gps.status)&&<button onClick={gps.retry} className="mt-2 underline">위치 다시 확인</button>}</section>}
     {joystick&&<div role="group" aria-label="이동 조이스틱" tabIndex={0} className="market-bottom-control absolute left-[17px] top-[665px] size-[160px] touch-none select-none rounded-full focus-visible:outline-2 focus-visible:outline-blue-500" {...stickHandlers}><span className="sr-only">드래그하여 이동. 키보드는 방향키 또는 WASD.</span></div>}
     </div>
-    {locationPreview&&<section role="status" className="absolute inset-x-3 top-3 rounded-xl border-2 border-[#946034] bg-[#fff4df] p-3 shadow-lg">
-      <button autoFocus onClick={onReturnLocation} className="rounded-lg border border-[#b78a55] bg-[#ffdc8a] px-3 py-2 font-retro text-sm">← 가게 상세로 돌아가기</button>
-      <p className="mt-2 text-xs text-[#806453]">{getStore(locationPreview.storeId).name} · 게임 지도에서의 위치입니다.</p>
-    </section>}
+    {locationPreview&&<button type="button" autoFocus onClick={onReturnLocation} aria-label="가게 상세로 돌아가기" className="absolute left-4 top-4 flex min-h-11 items-center gap-2 border-[3px] border-[#513724] bg-[#ffdf96] px-3 py-2 font-retro text-sm text-[#513724] shadow-[inset_0_3px_0_#fff2ca,inset_0_-3px_0_#c48a45,0_3px_0_#513724] focus-visible:outline-4 focus-visible:outline-offset-4 focus-visible:outline-[#fff2ca]">
+      <span aria-hidden="true" className="text-xl leading-none">←</span>가게로 돌아가기
+    </button>}
   </section>;
 }
