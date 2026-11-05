@@ -153,4 +153,15 @@ class Be1IntegrationTest {
         assertThat(reset.path("balance").asLong()).isEqualTo(1000L);
         assertThat(reset.path("nickname").asText()).isEqualTo("승우");
     }
+    @Test void gainExpAndLevelUpWorkProperly() throws Exception {
+        var step1 = json(request("POST","/api/v1/users/me/exp","{\"exp\":50}"),200).path("data");
+        assertThat(step1.path("level").asInt()).isEqualTo(1);
+        assertThat(step1.path("exp").asLong()).isEqualTo(50L);
+        assertThat(step1.path("nextLevelExp").asLong()).isEqualTo(100L);
+
+        var step2 = json(request("POST","/api/v1/users/me/exp","{\"exp\":60}"),200).path("data");
+        assertThat(step2.path("level").asInt()).isEqualTo(2);
+        assertThat(step2.path("exp").asLong()).isEqualTo(10L);
+        assertThat(step2.path("nextLevelExp").asLong()).isEqualTo(200L);
+    }
 }

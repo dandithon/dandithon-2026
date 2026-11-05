@@ -37,6 +37,15 @@ public class GuestUser {
     public void toggle(String slot, String id) {
         if(id.equals(equipped.get(slot))) equipped.remove(slot); else equipped.put(slot,id);
     }
+    public void gainExp(long gained) {
+        if(gained<=0) return;
+        this.exp = Math.addExact(this.exp, gained);
+        while(this.exp >= this.nextLevelExp) {
+            this.exp -= this.nextLevelExp;
+            this.level++;
+            this.nextLevelExp = (long) this.level * 100L;
+        }
+    }
     public void reset() {
         nickname = "승우";
         balance = 1000;

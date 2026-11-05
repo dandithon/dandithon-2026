@@ -42,6 +42,14 @@ public class ProfileService {
         return me();
     }
     @Transactional
+    public UserView gainExp(Long amount) {
+        long value = (amount != null && amount > 0) ? amount : 50L;
+        if (value > 100_000L) throw ApiException.invalid("1회 최대 경험치 획득량은 100,000이에요.");
+        GuestUser u = user(true);
+        u.gainExp(value);
+        return me();
+    }
+    @Transactional
     public UserView resetDemo() {
         GuestUser u = user(true);
         u.reset();
