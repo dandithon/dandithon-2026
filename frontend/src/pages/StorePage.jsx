@@ -4,11 +4,11 @@ import StoreScene from '../components/StoreScene';
 import {Art,ArtButton} from '../components/Art';
 export default function StorePage({store,state,onBack,onFavorite,onMenu,onReviews,notify,embedded=false,onLocation}){
   const [dragOffset,setDragOffset]=useState(0);
-  const share=async()=>{try{await navigator.clipboard.writeText(window.location.origin+'/#store/'+store.id);notify('가게 링크를 복사했어요. 같은 컴퓨터에서 열 수 있는 로컬 데모 링크예요.');}catch{notify('브라우저 주소를 복사해서 공유해 주세요.');}};
+  const share=async()=>{try{await navigator.clipboard.writeText(window.location.origin+'/#store/'+store.id);notify('가게 링크를 복사했어요.');}catch{notify('브라우저 주소를 복사해서 공유해 주세요.');}};
   return <section className={`relative size-full overflow-hidden ${embedded?'':'bg-paper'}`} aria-label={`${store.name} 가게 정보`}>
     {!embedded&&<StoreScene store={store} onBack={onBack} onFavorite={onFavorite} favorite={state.favorites.includes(store.id)} favoritesSupported={state.favoritesSupported}/>}
     {!embedded&&<button onClick={onMenu} aria-label="가게 메뉴 보기" className="absolute left-[232px] top-[199px] h-[72px] w-[132px] text-left font-retro text-[13px] leading-[15px] text-black"><span className="ml-[21px] block whitespace-pre-line">{store.greeting}</span></button>}
-    <section style={{height:embedded?'100%':Math.max(370,Math.min(652,370-dragOffset))}} className="absolute inset-x-0 bottom-0 flex h-[370px] flex-col rounded-t-[30px] bg-paper">
+    <section style={{height:embedded?'100%':Math.max(370,Math.min(652,370-dragOffset))}} className="absolute inset-x-0 bottom-0 flex h-[370px] flex-col overflow-y-auto rounded-t-[30px] bg-paper">
       {embedded?<div className="h-[40px] shrink-0"/>:<SheetHandle onDrag={setDragOffset} onToggle={onMenu}/>}
       <div className="relative mt-[9px] flex items-center justify-between px-[25px]">
         <button onClick={onMenu} className="font-retro text-[25px] leading-[30px] text-black">{store.name}</button>

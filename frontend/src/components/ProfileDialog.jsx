@@ -1,5 +1,6 @@
 import React,{useState} from 'react';
 import Dialog from './Dialog';
+import {validNickname} from '../game/nickname';
 import PlayerCharacter from './PlayerCharacter';
 import ProfileProgress from './ProfileProgress';
 import MenuImage from './MenuImage';
@@ -18,10 +19,10 @@ export default function ProfileDialog({state,preferences,progress,onClose,onHome
   return <Dialog label="내 프로필" onClose={onClose}>
     <section className="absolute inset-x-0 bottom-0 top-[134px] flex flex-col rounded-t-[30px] bg-[#fff9f0]">
       <header className="relative shrink-0 px-[38px] pb-4 pt-[25px]">
-        {editing?<form className="mr-7 flex gap-2" onSubmit={async e=>{e.preventDefault();if(await onRename(name))setEditing(false);}}>
-          <label className="sr-only" htmlFor="nickname">닉네임</label><input autoFocus id="nickname" value={name} onChange={e=>setName(e.target.value)} maxLength={16} className="min-w-0 w-[130px] rounded border border-[#c9a989] bg-white px-2 py-2 text-sm"/>
-          <button disabled={busy||!name.trim()} className="rounded border border-[#c9a989] px-2 text-xs">저장</button><button type="button" onClick={()=>setEditing(false)} className="text-xs">취소</button>
-        </form>:<><h2 className="max-w-[150px] truncate font-retro text-[25px]">{preferences.nickname}</h2><button onClick={()=>{setName(preferences.nickname);setEditing(true);}} className="absolute left-[203px] top-[18px] h-[61px] w-[137px]" aria-label="닉네임 변경"><img alt="" src={art.profile.imgImage118} className="absolute inset-0 h-[61px] w-[157px] max-w-none"/><span className="absolute left-[60px] top-[25px] whitespace-nowrap font-mona text-[11px] text-[#5b3b29]">닉네임 변경</span></button></>}
+        {editing?<form className="mr-7 flex flex-wrap gap-2" onSubmit={async e=>{e.preventDefault();if(validNickname(name)&&await onRename(name.trim()))setEditing(false);}}>
+          <label className="sr-only" htmlFor="nickname">닉네임</label><input autoFocus id="nickname" value={name} onChange={e=>setName(e.target.value)} maxLength={32} aria-describedby="nickname-hint" aria-invalid={!validNickname(name)} className="min-w-0 w-[130px] rounded border border-[#c9a989] bg-white px-2 py-2 text-sm"/>
+          <button disabled={busy||!validNickname(name)} className="rounded border border-[#c9a989] px-2 text-xs">저장</button><button type="button" onClick={()=>setEditing(false)} className="text-xs">취소</button>
+        <p id="nickname-hint" className="w-full text-[11px] text-[#806453]">앞뒤 공백 제외 · 1~8자 ({[...name.trim()].length}/8)</p></form>:<><h2 className="max-w-[150px] truncate font-retro text-[25px]">{preferences.nickname}</h2><button onClick={()=>{setName(preferences.nickname);setEditing(true);}} className="absolute left-[203px] top-[18px] h-[61px] w-[137px]" aria-label="닉네임 변경"><img alt="" src={art.profile.imgImage118} className="absolute inset-0 h-[61px] w-[157px] max-w-none"/><span className="absolute left-[60px] top-[25px] whitespace-nowrap font-mona text-[11px] text-[#5b3b29]">닉네임 변경</span></button></>}
         <button onClick={onClose} aria-label="프로필 닫기" className="absolute right-[17px] top-[29px] h-[39px] w-[40px]"><img alt="" src={art.profile.imgImage51} className="size-full"/></button>
       </header>
       {serverProfile?<ProfileProgress profile={preferences} supported={state.features?.experience}/>:<p className="mx-5 mb-3 text-[10px] text-muted">로컬 시연 프로필 · 레벨/경험치 규칙 준비 중</p>}
