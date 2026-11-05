@@ -13,4 +13,5 @@ public class MarketController {
     @GetMapping("/orders/receipts") public ApiResponse<?> receipts() {return ApiResponse.ok(Map.of("receipts",service.receipts()));}
     @GetMapping("/stores/{storeId}/reviews") public ApiResponse<?> reviews(@PathVariable String storeId) {return ApiResponse.ok(Map.of("reviews",service.reviews(storeId)));}
     @PostMapping("/reviews") @ResponseStatus(HttpStatus.CREATED) public ApiResponse<?> review(@RequestBody(required=false) MarketService.ReviewRequest request) {return ApiResponse.ok(service.review(request));}
+    @DeleteMapping("/reviews/{reviewId}") public ApiResponse<?> deleteReview(@PathVariable String reviewId) {return ApiResponse.ok(service.deleteReview(reviewId));}
 }
