@@ -1,18 +1,15 @@
-import React,{useState} from 'react';
+import React from 'react';
 import Dialog from './Dialog';
-import FullMapArtwork from './FullMapArtwork';
 import {ArtButton} from './Art';
-import {stores} from '../api/catalog';
-import {crowdLevel} from '../game/crowd';
-export default function FullMapDialog({onClose,onStore,waits,busy,zones}){
-  const [list,setList]=useState(false);
-  return <Dialog label="서문시장 전체 지도" onClose={onClose} shade={false}>
-    <FullMapArtwork zones={zones}/>
-    <div className="absolute right-3 top-3"><ArtButton screen="125:1213" name="imgImage51" width={40} height={39} label="전체 지도 닫기" onClick={onClose}/></div>
-    <button onClick={()=>setList(v=>!v)} aria-expanded={list} className="absolute bottom-5 left-1/2 -translate-x-1/2 rounded-xl border-2 border-[#9d7049] bg-paper px-5 py-3 font-retro shadow">{list?'가게 목록 접기':'탐험할 가게 보기'}</button>
-    {list&&<section className="absolute bottom-[80px] left-4 right-4 rounded-2xl border-2 border-[#9d7049] bg-paper p-4 shadow-xl" aria-label="탐험 가게 목록">
-      <h2 className="font-retro text-lg">가게 둘러보기</h2><p className="my-2 text-xs text-muted">시연 대기시간 · 실제 위치 안내가 아닌 시장 일러스트입니다.</p>
-      {stores.map(store=><button key={store.id} disabled={busy} onClick={()=>onStore(store.id)} className="flex min-h-[52px] w-full items-center justify-between border-t border-[#d8bfa2] text-left text-sm disabled:opacity-50"><span>{store.name}</span><span className="text-xs text-muted">{Number.isFinite(waits[store.id])?`${waits[store.id]}분 · ${store.crowdLabel||crowdLevel(waits[store.id]).label}`:'대기 정보 없음'} →</span></button>)}
-    </section>}
+
+export default function FullMapDialog({onClose}){
+  return <Dialog label="전체 지도 준비 안내" onClose={onClose} shade={false}>
+    <section className="absolute inset-0 flex flex-col items-center justify-center bg-[#fff9f0] px-7 text-center">
+      <div className="absolute right-4 top-4"><ArtButton screen="125:1213" name="imgImage51" width={40} height={39} label="전체 지도 닫기" onClick={onClose}/></div>
+      <p className="font-retro text-sm text-[#946034]">서문시장 전체 지도</p>
+      <h2 className="mt-5 font-retro text-[30px] text-[#513724]">준비 중입니다!</h2>
+      <p className="mt-5 text-sm leading-7 text-[#806453]">전체 지도를 준비하고 있어요.<br/>시장 탐험은 계속 이용할 수 있어요.</p>
+      <button onClick={onClose} className="mt-8 rounded-xl border-2 border-[#946034] bg-[#ffc857] px-7 py-3 font-retro shadow-[0_4px_0_#b47b35]">시장으로 돌아가기</button>
+    </section>
   </Dialog>;
 }
