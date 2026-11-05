@@ -25,6 +25,8 @@ export const explorationApi={
     if(!item?.unlocked)throw Error('아직 획득하지 않은 장비예요.');
     const equipped={...preferences.equipped};
     if(equipped[item.slot]===id)delete equipped[item.slot];else equipped[item.slot]=id;
-    return write({...preferences,equipped});
+    const saved=write({...preferences,equipped});
+    if(id==='tteok-hat'&&equipped.head===id)await marketApi.recordHatTry();
+    return saved;
   },
 };

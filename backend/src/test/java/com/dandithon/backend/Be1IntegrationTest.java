@@ -34,7 +34,7 @@ class Be1IntegrationTest {
 
     @BeforeEach void reset() {
         tx=new TransactionTemplate(manager);
-        tx.executeWithoutResult(s->{for(String table:List.of("review_images","game_reviews","order_lines","game_orders","quest_claims"))jdbc.update("delete from "+table);events.deleteAll();counts.deleteAll();users.deleteAll();users.saveAndFlush(new GuestUser(1));});
+        tx.executeWithoutResult(s->{for(String table:List.of("daily_activities","review_images","game_reviews","order_lines","game_orders","quest_claims"))jdbc.update("delete from "+table);events.deleteAll();counts.deleteAll();users.deleteAll();users.saveAndFlush(new GuestUser(1));});
     }
     HttpResponse<String> request(String method,String path,String body) throws Exception {
         var builder=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+path));
@@ -139,7 +139,7 @@ class Be1IntegrationTest {
     @Test void zonesAndSwaggerExposeAllOperations() throws Exception {
         assertThat(get("/map/zones").path("zones").size()).isEqualTo(4);
         var api=json(request("GET","/v3/api-docs",null),200);
-        assertThat(api.path("paths").size()).isEqualTo(16);
+        assertThat(api.path("paths").size()).isEqualTo(17);
         json(request("GET","/api/v1/no-such-route",null),404);
         var ui=request("GET","/swagger-ui/index.html",null);
         assertThat(ui.statusCode()).isEqualTo(200);

@@ -39,7 +39,7 @@ class Be2IntegrationTest {
     final HttpClient client=HttpClient.newHttpClient();
     @BeforeEach void reset(){
         clock.instant=Instant.parse("2026-11-03T03:00:00Z");
-        for(String table:List.of("review_images","game_reviews","order_lines","game_orders","quest_claims","purchase_events","food_progress","equipped_items"))jdbc.update("delete from "+table);
+        for(String table:List.of("daily_activities","review_images","game_reviews","order_lines","game_orders","quest_claims","purchase_events","food_progress","equipped_items"))jdbc.update("delete from "+table);
         jdbc.update("update app_users set balance=1000,nickname='승우' where id=1");
     }
     HttpResponse<String> request(String method,String path,String body,String key)throws Exception {

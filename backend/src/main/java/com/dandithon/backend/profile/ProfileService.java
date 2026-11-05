@@ -1,5 +1,6 @@
 package com.dandithon.backend.profile;
 import com.dandithon.backend.common.ApiException;
+import com.dandithon.backend.market.DailyActivityService;
 import com.dandithon.backend.market.OrderRepository;
 import com.dandithon.backend.market.QuestClaimRepository;
 import com.dandithon.backend.market.ReviewRepository;
@@ -13,12 +14,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfileService {
     private final UserRepository users;
     private final FoodProgressRepository progress;
+    private final DailyActivityService activities;
+    private final com.dandithon.backend.market.DailyActivityRepository dailyActivities;
     private final PurchaseEventRepository events;
     private final OrderRepository orders;
     private final ReviewRepository reviews;
     private final QuestClaimRepository claims;
-    public ProfileService(UserRepository users,FoodProgressRepository progress,PurchaseEventRepository events,OrderRepository orders,ReviewRepository reviews,QuestClaimRepository claims) {
-        this.users=users;this.progress=progress;this.events=events;this.orders=orders;this.reviews=reviews;this.claims=claims;
+    public ProfileService(UserRepository users,FoodProgressRepository progress,DailyActivityService activities,com.dandithon.backend.market.DailyActivityRepository dailyActivities,PurchaseEventRepository events,OrderRepository orders,ReviewRepository reviews,QuestClaimRepository claims) {
+        this.users=users;this.progress=progress;this.activities=activities;this.dailyActivities=dailyActivities;this.events=events;this.orders=orders;this.reviews=reviews;this.claims=claims;
     }
     private GuestUser user(boolean write) {
         return (write?users.findForUpdate(1):users.findById(1L)).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));
@@ -47,6 +50,7 @@ public class ProfileService {
         events.deleteAll();
         progress.deleteAll();
         claims.deleteAll();
+        dailyActivities.deleteAll();
         return me();
     }
     public record NicknameView(String nickname) {}
@@ -75,7 +79,9 @@ public class ProfileService {
         GuestUser u=user(true);
         long count=progress.findByUserIdAndFoodId(u.getId(),item.foodId()).map(FoodProgress::getPurchaseCount).orElse(0L);
         if(count<item.required())throw new ApiException("EQUIPMENT_LOCKED","아직 획득하지 않은 장비예요.",HttpStatus.BAD_REQUEST);
-        u.toggle(item.slot(),id);return new EquippedView(equipped(u));
+        u.toggle(item.slot(),id);
+        if("tteok-hat".equals(id)&&id.equals(u.getEquipped().get("head")))activities.record(u.getId(),DailyActivityService.WEAR_HAT,id);
+        return new EquippedView(equipped(u));
     }
     public record BadgeView(String tier,String name,int required,boolean earned) {}
     public record NextBadgeView(String tier,String name,long remainingCount) {}
