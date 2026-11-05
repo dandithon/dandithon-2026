@@ -61,7 +61,7 @@ test('successful reset clears local pending state and reloads locked equipment',
   const api=backend();api.saved.set('dandi-api-guest-local-v1',JSON.stringify({cart:[],favorites:['seomun'],visits:['seomun'],pending:{lost:'previous-request'}}));await api.market.load();await api.profile.load();await api.profile.equip('tteok-scarf');
   const reset=await api.market.resetDemo();
   assert.equal(reset.user.balance,1000);assert.deepEqual(reset.state.orders,[]);assert.deepEqual(reset.state.reviews,[]);
-  assert.deepEqual(reset.state.cart,[]);assert.deepEqual(reset.state.visits,[]);assert.deepEqual(reset.state.claimed,[]);
+  assert.deepEqual(reset.state.favorites,[]);assert.deepEqual(reset.state.cart,[]);assert.deepEqual(reset.state.visits,[]);assert.deepEqual(reset.state.claimed,[]);
   const cache=JSON.parse([...api.saved.values()][0]);assert.equal(cache.pending,undefined);
   const profile=await api.profile.load();assert.deepEqual(profile.equipped,{});
   assert.ok(profile.items.every(item=>!item.unlocked));assert.equal(profile.counts.tteok,0);assert.equal(api.resets(),1);

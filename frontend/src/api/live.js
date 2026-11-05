@@ -41,7 +41,7 @@ export function createLiveApi(request, storage) {
     async resetDemo(){
       const user=await request('/demo/reset',{method:'POST'});
       const balance=confirmedBalance(user);
-      local={cart:[],favorites:[...local.favorites],visits:[]};
+      local={cart:[],favorites:Array.isArray(user.favorites)?user.favorites:[],visits:[]};
       state={...state,balance,orders:[],reviews:[],claimed:[],lastReward:null};
       setQuests({daily:[],achievement:[],event:[]});
       preferences={...user};

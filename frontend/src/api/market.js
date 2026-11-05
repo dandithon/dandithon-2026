@@ -25,8 +25,7 @@ function syncQuests(s){
 // This demo never submits a real order or charges money.
 export const marketApi={
   async resetDemo(){
-    const previous=current();
-    state={...fresh(),balance:1000,orders:[],reviews:[],cart:[],visits:[],claimed:[],favorites:[...previous.favorites],dailyQuest:undefined,lastReward:null};
+    state={...fresh(),balance:1000,orders:[],reviews:[],cart:[],visits:[],claimed:[],favorites:[],dailyQuest:undefined,lastReward:null};
     const result=save(current());
     return {state:result,user:{balance:1000}};
   },
