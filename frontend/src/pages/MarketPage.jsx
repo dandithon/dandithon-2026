@@ -28,9 +28,9 @@ export default function MarketPage({state,onStore,onModal,notify,overlay,active=
       <MapArtwork layer="world" assets={manifest['40:41']} position={displayPosition} direction={direction} moving={moving} camera={camera} equipped={progress.equipped}>
     <div className="contents" inert={locationPreview?true:undefined}>
     <button aria-label="서문분식 들어가기" onClick={()=>onStore('seomun')} className="absolute left-[15px] top-[136px] h-[153px] w-[148px] rounded-xl"/>
-    <button aria-label="칼국수 가게 방문" onClick={()=>onStore('noodle')} className="absolute left-[268px] top-[136px] h-[140px] w-[58px]"/>
-    <button aria-label="호떡 가게 방문" onClick={()=>onStore('hotteok')} className="absolute left-[10px] top-[493px] h-[155px] w-[150px]"/>
-    <button aria-label="커피 디저트 가게 방문" onClick={()=>onStore('coffee')} className="absolute left-[270px] top-[493px] h-[155px] w-[122px]"/>
+    <button aria-label="시장칼국수 방문" onClick={()=>onStore('noodle')} className="absolute left-[268px] top-[136px] h-[140px] w-[58px]"/>
+    <button aria-label="달콤호떡 방문" onClick={()=>onStore('hotteok')} className="absolute left-[10px] top-[493px] h-[155px] w-[150px]"/>
+    <button aria-label="골목카페 방문" onClick={()=>onStore('coffee')} className="absolute left-[270px] top-[493px] h-[155px] w-[122px]"/>
     </div>
         <CrowdLayer store={getStore('seomun')} minutes={waits.seomun}/>
         {locationPreview&&<StoreSpotlight store={getStore(locationPreview.storeId)}/>}
