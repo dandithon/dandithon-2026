@@ -6,7 +6,7 @@ const lineId = (orderId, menuId) => orderId + ':' + menuId;
 const receiptLine = row => ({...row, id:lineId(row.orderId,row.menuId), itemId:row.menuId});
 const reviewView = (row, storeId) => ({...row, storeId, name:row.authorName});
 
-export function createLiveApi(request, storage) {
+export function createLiveApi(request, storage,discoverFeatures) {
   const key='dandi-api-guest-local-v1';
   let local={cart:[],favorites:[],visits:[]};
   let state={}, preferences={};
@@ -68,8 +68,9 @@ export function createLiveApi(request, storage) {
         const saved=JSON.parse(storage.getItem(key));
         if(saved && ['cart','favorites','visits'].every(field=>Array.isArray(saved[field])))local=saved;
       } catch { /* Invalid device cache can be rebuilt from an empty basket. */ }
-      const [{stores},user,{receipts},quests,{zones}]=await Promise.all([
-        request('/stores'),request('/users/me'),request('/orders/receipts'),request('/quests'),request('/map/zones')
+      const [{stores},user,{receipts},quests,{zones},features]=await Promise.all([
+        request('/stores'),request('/users/me'),request('/orders/receipts'),request('/quests'),request('/map/zones'),
+        discoverFeatures?discoverFeatures().catch(()=>null):null
       ]);
       local.favorites=Array.isArray(user?.favorites)?[...user.favorites]:[];
       const entries=await Promise.all(stores.map(async summary=>{
@@ -79,7 +80,7 @@ export function createLiveApi(request, storage) {
       }));
       useServerCatalog(entries.map(e=>e.store));
       local.cart=local.cart.filter(line=>menu.some(m=>m.id===line.itemId));
-      state={balance:user.balance,favoritesSupported:Array.isArray(user.favorites),orders:receipts.map(receiptLine),reviews:entries.flatMap(e=>e.reviews),
+      state={balance:user.balance,features,favoritesSupported:Array.isArray(user.favorites)&&features?.favorites!==false,orders:receipts.map(receiptLine),reviews:entries.flatMap(e=>e.reviews),
         zones, waits:Object.fromEntries(stores.map(s=>[s.id,s.waitTimeMinutes]))};
       setQuests(quests);
       return snapshot();
@@ -87,6 +88,12 @@ export function createLiveApi(request, storage) {
     async refreshOrders(){
       const {receipts}=await request('/orders/receipts');
       state.orders=receipts.map(receiptLine);
+      return snapshot();
+    },
+    async refreshFeatures(){
+      if(discoverFeatures){
+        try{state.features=await discoverFeatures();}catch{ /* Keep the last known contract if docs are unavailable. */ }
+      }
       return snapshot();
     },
     async refreshReviews(){
@@ -127,6 +134,7 @@ export function createLiveApi(request, storage) {
       return snapshot();
     },
     async deleteReview(id){
+      if(state.features?.reviewDelete===false)throw Error('현재 서버는 리뷰 삭제 기능을 준비 중이에요.');
       let result;
       try{result=await request('/reviews/'+encodeURIComponent(id),{method:'DELETE'});}
       catch(error){

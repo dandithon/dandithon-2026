@@ -91,7 +91,7 @@ export default function App(){
   };
   const openModal=name=>{
     if(name==='quests')return run(async()=>{setState(await marketApi.refreshQuests());setModal(name);});
-    if(live && name==='profile')return run(async()=>{await refreshProfile();setModal(name);});
+    if(live && name==='profile')return run(async()=>{setState(await marketApi.refreshFeatures());await refreshProfile();setModal(name);});
     setModal(name);
   };
   const updateCoins=async amount=>{

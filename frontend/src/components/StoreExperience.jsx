@@ -10,7 +10,7 @@ export default function StoreExperience({expanded,store,state,onBack,onFavorite,
   const height=Math.max(370,Math.min(652,(expanded?652:370)-dragOffset));
   const toggle=()=>{setDragOffset(0);expanded?onBack():onMenu();};
   return <section className="relative size-full overflow-hidden bg-paper" aria-label={`${store.name} 가게`}>
-    <StoreScene store={store} expanded={expanded} onBack={onBack} onFavorite={onFavorite} favorite={state.favorites.includes(store.id)}/>
+    <StoreScene store={store} expanded={expanded} onBack={onBack} onFavorite={onFavorite} favorite={state.favorites.includes(store.id)} favoritesSupported={state.favoritesSupported}/>
     <button onClick={onMenu} aria-label="가게 메뉴 보기" disabled={expanded} className="store-scene-greeting absolute left-[232px] top-[199px] h-[72px] w-[132px] text-left font-retro text-[13px] leading-[15px] text-black" style={{opacity:expanded?0:1,pointerEvents:expanded?'none':'auto'}}><span className="ml-[21px] block whitespace-pre-line">{store.greeting}</span></button>
     <div className="store-scene-shade pointer-events-none absolute inset-0 bg-[#1e252b]" style={{opacity:expanded?.5:0}}/>
     {expanded&&<button type="button" aria-label="가게 첫 화면으로 돌아가기" onClick={onBack} className="absolute inset-x-0 top-0" style={{height:874-height}}/>}
