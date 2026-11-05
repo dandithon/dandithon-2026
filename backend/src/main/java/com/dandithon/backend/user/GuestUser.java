@@ -37,4 +37,12 @@ public class GuestUser {
     public void toggle(String slot, String id) {
         if(id.equals(equipped.get(slot))) equipped.remove(slot); else equipped.put(slot,id);
     }
+    public void reset() {
+        nickname = "승우";
+        balance = 1000;
+        level = 1;
+        exp = 0;
+        nextLevelExp = 100;
+        equipped.clear();
+    }
 }
