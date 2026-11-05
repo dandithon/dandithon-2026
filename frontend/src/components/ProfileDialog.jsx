@@ -9,7 +9,7 @@ import {menu,getStore} from '../api/catalog';
 import {badges} from '../game/progression';
 import {collectionFoods} from '../game/profile';
 
-export default function ProfileDialog({state,preferences,progress,onClose,onEquip,onRename,busy,syncError,onRefresh,onDeleteReview,onRefreshReviews,onOpenFavorite,onRefreshFavorites}){
+export default function ProfileDialog({state,preferences,progress,onClose,onHome,onEquip,onRename,busy,syncError,onRefresh,onDeleteReview,onRefreshReviews,onOpenFavorite,onRefreshFavorites}){
   const [tab,setTab]=useState('bag'),[editing,setEditing]=useState(false),[name,setName]=useState(preferences.nickname),[previewDirection,setPreviewDirection]=useState('down');
   const [deleting,setDeleting]=useState(null);
   const {items,equipped,counts}=progress;
@@ -29,9 +29,9 @@ export default function ProfileDialog({state,preferences,progress,onClose,onEqui
       <nav aria-label="프로필 메뉴" className="mx-5 grid shrink-0 grid-cols-4 gap-[7px]">
         {[['bag','가방'],['reviews','내 리뷰'],['collection','수집 음식'],['favorites','즐겨찾기']].map(([id,label])=><button key={id} aria-pressed={tab===id} onClick={()=>{setTab(id);setDeleting(null);}} className={`h-[42px] rounded-[10px] text-[13px] ${tab===id?'bg-[#d9b99b] font-semibold text-[#49362c]':'bg-[#f0e4d6] text-[#806b5c]'}`}>{label}</button>)}
       </nav>
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5" key={tab}>
+      <div className="mt-4 min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5" key={tab}>
         {tab==='bag'&&<>
-          <div className="relative mx-[24px] mt-[27px] flex h-[280px] gap-3">
+          <div className="relative mx-[24px] mt-3 flex h-[280px] gap-3">
             <div className="relative min-w-0 flex-1 rounded-[10px] bg-[#f5e6d2] shadow-[inset_0px_4px_4px_0px_rgba(0,0,0,.25)]">
               <div className="absolute left-1/2 top-[28px] size-[180px] -translate-x-1/2"><PlayerCharacter direction={previewDirection} equipped={equipped}/></div>
               <nav aria-label="캐릭터 미리보기 방향" className="absolute inset-x-2 bottom-3 flex justify-center gap-1">
@@ -67,6 +67,7 @@ export default function ProfileDialog({state,preferences,progress,onClose,onEqui
         {tab==='collection'&&<div className="space-y-3 p-5"><p className="text-xs text-muted">{serverProfile?'서버 누적 구매 기록':'시연 구매 기록'} · 배지 3회 / 5회 / 10회</p>
           {foods.map(({item,count,food})=>{const {earned,next}=food?{earned:food.badges.filter(b=>b.earned),next:food.nextBadge && {name:food.nextBadge.name,count:count+food.nextBadge.remainingCount}}:badges(count);return <article key={item.id} className="rounded-xl border border-[#d8bfa2] bg-paper p-3"><div className="flex items-center gap-3"><MenuImage item={item} width={72} height={54}/><div><p className="text-xs text-muted">{item.storeId?getStore(item.storeId).name:'수집 음식'}</p><h3 className="font-semibold">{item.name}</h3><p className="text-sm">누적 구매 {count}회</p></div></div><div className="mt-3 flex gap-2">{['브론즈','실버','골드'].map(name=><span key={name} className={`rounded-full border px-2 py-1 text-xs ${earned.some(b=>b.name===name)?'border-[#b47e36] bg-[#ffe8ac]':'border-[#d8c7b4] text-muted'}`}>{name} {earned.some(b=>b.name===name)?'획득':'잠김'}</span>)}</div><p className="mt-2 text-xs text-muted">{next?`${next.name}까지 ${next.count-count}회 남았어요.`:'모든 배지를 모았어요!'}</p></article>;})}
         </div>}
+        <button type="button" onClick={onHome} className="mx-5 mt-5 min-h-11 rounded border border-[#c9a989] bg-[#fff0cf] px-4 text-xs text-[#805532]">처음 화면으로</button>
       </div>
     </section>
   </Dialog>;

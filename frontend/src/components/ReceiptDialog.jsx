@@ -4,7 +4,7 @@ import Dialog from './Dialog';
 import {Art,ArtButton} from './Art';
 import {menu,getStore} from '../api/catalog';
 export default function ReceiptDialog({orders,onClose,onReview}){
-  return <Dialog label="내 영수증" onClose={onClose} shade={false}>
+  return <Dialog label="내 영수증" onClose={onClose} shade={false} panelBounds={{left:38,top:180,width:326,height:530}}>
     <div className="pointer-events-none absolute -left-[2px] top-0"><img src="/assets/125-1186-imgRectangle10.svg" alt=""/></div>
     <div className="pointer-events-none absolute left-0 top-[141px]"><Art screen="125:1186" name="imgImage65" width={401} height={602}/></div>
     <div className="absolute left-[297px] top-[235px]"><ArtButton screen="125:1186" name="imgImage51" width={40} height={39} label="영수증 닫기" onClick={onClose}/></div>

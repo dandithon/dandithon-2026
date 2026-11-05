@@ -32,7 +32,7 @@ button:not(.dialog-backdrop) { transition: opacity 90ms ease, scale 90ms ease; }
 button:not(:disabled):not(.dialog-backdrop):active { opacity: .82; scale: .97; }
 .hud-action::after { content: ''; position: absolute; inset: 0; border-radius: 16px; background: #21170f; opacity: 0; pointer-events: none; transition: opacity 90ms ease; }
 .hud-action:active::after { opacity: .18; }
-.dialog-surface > * { pointer-events: auto; }
+.dialog-surface > :not(.pointer-events-none) { pointer-events: auto; }
 .dialog-backdrop { animation: ui-fade-in 160ms ease-out both; }
 .dialog-surface { transform-origin: 50% 65%; animation: ui-panel-in 190ms cubic-bezier(.2,.7,.2,1) both; }
 .modal-motion[data-modal='profile'] .dialog-surface { transform-origin: 88px 80px; animation-name: ui-profile-in; }
@@ -54,9 +54,17 @@ button:not(:disabled):not(.dialog-backdrop):active { opacity: .82; scale: .97; }
   .dialog-backdrop, .dialog-surface, .scene-enter, .store-spotlight { animation: none !important; }
 }
 
-.app-shell { box-sizing: border-box; height: 100vh; height: 100svh; display: flex; flex-direction: column; max-width: 402px; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-.app-shell > footer { flex-shrink: 0; }
+.app-shell { box-sizing: border-box; height: 100vh; height: 100svh; height: 100dvh; display: flex; flex-direction: column; max-width: 402px; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Shared parchment track and wood-colored thumb for every scrollable panel. */
+.app-shell, .app-shell * { scrollbar-width: thin; scrollbar-color: #a5784d #f0e2cc; }
+.app-shell ::-webkit-scrollbar { width: 8px; height: 8px; }
+.app-shell ::-webkit-scrollbar-track { background: #f0e2cc; border-radius: 8px; }
+.app-shell ::-webkit-scrollbar-thumb { background: #a5784d; border: 2px solid #f0e2cc; border-radius: 8px; }
+.app-shell ::-webkit-scrollbar-thumb:hover { background: #805532; }
+.app-shell ::-webkit-scrollbar-corner { background: transparent; }
+.app-shell ::-webkit-scrollbar-button { display: none; }
 .market-bottom-control { transform: translateY(var(--controls-shift, 0px)); }
+.map-world { will-change: transform; backface-visibility: hidden; }
 @media (max-width: 600px) and (orientation: portrait) {
   .app-shell { max-width: none; }
 }

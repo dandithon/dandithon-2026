@@ -26,7 +26,7 @@ export default function MarketPage({state,onStore,onModal,notify,overlay,active=
   const screen=joystick?'40:41':'138:1528';
   return <section className="relative size-full overflow-hidden" aria-label="서문시장 지도">
     {state.waitsStale&&!locationPreview&&<p role="status" className="absolute inset-x-4 top-2 z-10 rounded border border-[#c9a989] bg-[#fff4df] px-3 py-1 text-center text-[10px] text-[#805532]">대기정보 갱신 지연 · 마지막 확인 정보를 표시해요.</p>}
-    <div className="absolute left-0 top-0 h-[874px] w-full touch-none select-none" {...(locationPreview?{}:mapHandlers)}>
+    <div className="absolute left-0 top-0 w-full touch-none select-none" style={{height:sceneHeight}} {...(locationPreview?{}:mapHandlers)}>
       <MapArtwork layer="world" assets={manifest['40:41']} position={displayPosition} direction={direction} moving={moving} camera={camera} equipped={progress.equipped}>
     <div className="contents" inert={locationPreview?true:undefined}>
     <button aria-label="서문분식 들어가기" onClick={()=>onStore('seomun')} className="absolute left-[15px] top-[136px] h-[153px] w-[148px] rounded-xl"/>

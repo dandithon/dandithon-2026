@@ -5,7 +5,7 @@ import CoinDialog from './components/CoinDialog';
 import {explorationApi,marketApi,live,validateMode} from './api/service';
 import {progression} from './game/progression';
 import {readProfile} from './game/profile';
-import {sceneLayout} from './game/layout';
+import {sceneLayout,startLayout} from './game/layout';
 import useModalMotion from './game/useModalMotion';
 import {demoWaits} from './game/crowd';
 import StartPage from './pages/StartPage';
@@ -52,16 +52,15 @@ export default function App(){
     const resize=()=>{
       const style=getComputedStyle(element);
       const inset=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom);
-      const footer=element.querySelector('footer').offsetHeight;
       const visible=window.visualViewport;
-      // svh reserves expanded browser chrome. VisualViewport also handles browsers
+      // Dynamic viewport units track browser chrome. VisualViewport also handles browsers
       // whose visible area is smaller. Keep layout stable during keyboard entry/zoom.
       const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
       const visibleHeight=!typing&&visible?.scale===1?Math.min(element.clientHeight,visible.height):element.clientHeight;
       const portraitPhone=window.matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
-      setLayout(sceneLayout(element.clientWidth,visibleHeight-footer-inset,portraitPhone&&page==='market'));
+      setLayout(portraitPhone&&page==='start'?startLayout(element.clientWidth,visibleHeight-inset):sceneLayout(element.clientWidth,visibleHeight-inset,portraitPhone&&page==='market'));
     };
-    const observer=new ResizeObserver(resize);observer.observe(element);observer.observe(element.querySelector('footer'));window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);resize();
+    const observer=new ResizeObserver(resize);observer.observe(element);window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);resize();
     return()=>{observer.disconnect();window.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);};
   },[page]);
   useEffect(()=>{if(modal!=='receipts')return;let active=true,pending=false;
@@ -167,14 +166,14 @@ export default function App(){
       <div className="absolute left-0 top-0 w-[402px] origin-top-left bg-paper font-sans" style={{height:sceneHeight,transform:`scale(${scale})`,'--controls-shift':`${sceneHeight-874}px`}}>
         {!state||!preferences?<section className="p-8 pt-40 text-center" aria-live="polite">{loadError?<><h1 className="font-retro text-xl">잠시 쉬어갈까요?</h1><p role="alert" className="my-6 break-words text-sm leading-6">{loadError}</p><button onClick={load} className="rounded-lg border-2 border-[#946034] bg-[#ffc857] px-5 py-3">다시 시도</button>{!live&&loadError.includes('프로필')&&<button className="mt-4 block w-full text-sm underline" onClick={async()=>{try{await explorationApi.resetPreferences();load();}catch(error){setLoadError(error.message);}}}>프로필 설정만 초기화 (주문·리뷰 유지)</button>}</>:<p>시장을 준비하고 있어요…</p>}</section>:<>
           <div className="size-full" inert={modal?true:undefined}>
-            {page==='start'&&<StartPage onStart={()=>setPage('market')}/>}
+            {page==='start'&&<StartPage sceneHeight={sceneHeight} onStart={()=>setPage('market')}/>}
             <div hidden={page!=='market'} className={`size-full ${page==='market'?'scene-enter':''}`}><MarketPage locationPreview={locationPreview} onReturnLocation={returnLocation} sceneHeight={sceneHeight} preferences={preferences} progress={progress} waits={state.waits || demoWaits} active={page==='market'} state={state} onStore={visit} onModal={openModal} notify={notify} overlay={modal}/></div>
             {(page==='store'||page==='menu'||locationPreview)&&<div hidden={page!=='store'&&page!=='menu'} className="size-full"><StoreExperience onLocation={showLocation} expanded={(locationPreview?.returnPage||page)==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/></div>}
           </div>
           {modal&&<div key={modal} data-modal={modal} inert={closing?true:undefined} className={`modal-motion absolute inset-0 z-30 ${closing?'is-closing':''}`}>
           {modal==='coins'&&<CoinDialog balance={state.balance} busy={busy} live={live} onClose={close} onCharge={updateCoins} onCheckBalance={()=>updateCoins()} onReset={resetDemo} onReload={reloadAll}/>}
-          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={equip} onDeleteReview={deleteReview} onRefreshReviews={refreshReviews} onOpenFavorite={openFavorite} onRefreshFavorites={refreshFavorites} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
-          {modal==='map'&&<FullMapDialog onClose={close}/>}
+          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} onHome={()=>{setModal(null);setLocationPreview(null);setPage('start');}} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={equip} onDeleteReview={deleteReview} onRefreshReviews={refreshReviews} onOpenFavorite={openFavorite} onRefreshFavorites={refreshFavorites} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
+          {modal==='map'&&<FullMapDialog zones={state.zones} notify={notify} onClose={close} onReturn={()=>{close();setPage('market');setLocationPreview(null);setToast('');}}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
           {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
@@ -186,6 +185,5 @@ export default function App(){
         {toast&&<div role="status" className="pointer-events-none absolute inset-x-[24px] bottom-[24px] z-50 rounded-xl border border-[#dec69c] bg-[#3c2b20f2] px-5 py-4 text-center text-[13px] leading-6 text-[#fff4de] shadow-xl">{toast}</div>}
       </div>
     </main>
-    <footer className="flex items-center justify-between gap-4 px-4 py-3 text-[11px] text-[#d5dacb]"><span>{live?'서버 연결 · 공용 게스트 · 게임 코인':'프론트엔드 데모 · 실제 주문/결제 없음'}</span><button onClick={()=>{setModal(null);setLocationPreview(null);setPage('start');}} className="underline underline-offset-4">처음으로</button></footer>
   </div>;
 }
