@@ -88,8 +88,10 @@ export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl) {
       return snapshot();
     },
     async refreshOrders(){
+      // A purchase, review, reset or newer refresh may finish while this request waits.
+      const previousOrders=state.orders;
       const {receipts}=await request('/orders/receipts');
-      state.orders=receipts.map(receiptLine);
+      if(state.orders===previousOrders)state.orders=receipts.map(receiptLine);
       return snapshot();
     },
     async refreshFeatures(){
@@ -145,6 +147,7 @@ export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl) {
       }
       if(result?.deleted!==true)throw Error('리뷰 삭제 결과를 확인하지 못했어요. 목록을 다시 확인해 주세요.');
       state.reviews=state.reviews.filter(review=>review.id!==id);
+      state.orders=[...state.orders]; // Invalidate receipt reads started before deletion.
       return snapshot();
     },
     async addToCart(itemId,quantity){

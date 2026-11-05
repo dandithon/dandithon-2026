@@ -42,7 +42,9 @@ export default function MarketPage({state,onStore,onModal,notify,overlay,active=
     <div className="pointer-events-none absolute inset-0"><MapArtwork assets={manifest[screen]} nickname={preferences.nickname} balance={state.balance} joystick={joystick} stick={stick}/></div>
     <button aria-label="전체 지도 열기" onClick={()=>onModal('map')} className="hud-action absolute left-[328px] top-[174px] size-[64px]"/>
     <button aria-label="퀘스트 열기" onClick={()=>onModal('quests')} className="hud-action absolute left-[327px] top-[258px] size-[64px]"/>
-    <button aria-label="내 영수증 열기" onClick={()=>onModal('receipts')} className="hud-action absolute left-[327px] top-[342px] size-[64px]"/>
+    <button aria-label="내 영수증 열기" onClick={()=>onModal('receipts')} className="hud-action absolute left-[327px] top-[342px] size-[64px]">
+      {state.orders.some(order=>order.status==='ready')&&<><span aria-hidden="true" className="absolute right-1 top-1 size-4 rounded-full border-2 border-[#fff4df] bg-orange-500 shadow"/><span className="sr-only">리뷰를 기다리는 조리 완료 주문이 있어요</span></>}
+    </button>
     <button aria-label="코인 충전 열기" onClick={()=>onModal('coins')} className="hud-action absolute left-[345px] top-[65px] size-[44px]"/>
     <button aria-label="프로필 보기" onClick={()=>onModal('profile')} className="hud-action absolute left-[5px] top-[47px] h-[71px] w-[178px]"/>
     <button aria-label="이동 조작 표시" aria-pressed={joystick} onClick={()=>setJoystick(x=>!x)} className="market-bottom-control absolute left-[306px] top-[761px] h-[63px] w-[93px]"/>
