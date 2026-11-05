@@ -2,10 +2,11 @@ export function createClient(baseUrl) {
   return async function request(path, {method='GET', body, headers={}}={}) {
     if (!baseUrl) throw Error('VITE_API_BASE_URL 설정을 확인해 주세요.');
     let response;
+    const multipart=typeof FormData!=='undefined'&&body instanceof FormData;
     try {
       response = await fetch(baseUrl.replace(/\/+$/, '') + path, {
-        method, headers:body ? {'Content-Type':'application/json', ...headers} : headers,
-        body:body ? JSON.stringify(body) : undefined,
+        method, headers:body&&!multipart ? {'Content-Type':'application/json', ...headers} : headers,
+        body:multipart?body:body ? JSON.stringify(body) : undefined,
         signal:AbortSignal.timeout(15000),
       });
     } catch {

@@ -1,11 +1,13 @@
 import React,{useState} from 'react';
 import Dialog from './Dialog';
+import ReviewPhotos from './ReviewPhotos';
 import {menu,getStore} from '../api/catalog';
 const panel='absolute left-[24px] top-[230px] w-[354px] rounded-[24px] border-2 border-[#9d7049] bg-paper p-[24px] shadow-xl';
 const primary='rounded-lg border-2 border-[#946034] bg-[#ffc857] px-4 py-3 text-sm font-semibold disabled:opacity-50';
-export function ReviewEditor({orderId,onClose,onSave,busy}){
+export function ReviewEditor({orderId,onClose,onSave,busy,onUpload,photoSupported}){
   const [text,setText]=useState(''),[rating,setRating]=useState(5);
-  return <Dialog label="리뷰 작성" onClose={onClose}><form className={panel} onSubmit={e=>{e.preventDefault();onSave(orderId,text,rating);}}>
+  const [photos,setPhotos]=useState([]),[uploading,setUploading]=useState(false);
+  return <Dialog label="리뷰 작성" onClose={onClose}><form className="absolute inset-x-6 top-[120px] max-h-[710px] overflow-y-auto overscroll-contain rounded-[24px] border-2 border-[#9d7049] bg-paper p-6 shadow-xl" onSubmit={e=>{e.preventDefault();if(!busy&&!uploading)onSave(orderId,text,rating,photos.map(photo=>photo.url));}}>
     <div className="flex items-center justify-between"><h2 className="font-pixel text-lg">리뷰 작성</h2><button type="button" onClick={onClose} aria-label="리뷰 작성 닫기" className="px-2 text-2xl">×</button></div>
     <fieldset disabled={busy} className="mt-5">
       <legend className="text-sm">별점</legend>
@@ -21,7 +23,9 @@ export function ReviewEditor({orderId,onClose,onSave,busy}){
       </div>
     </fieldset>
     <label className="mt-5 block text-sm">방문 후기<textarea required maxLength={500} value={text} onChange={e=>setText(e.target.value)} className="mt-2 block h-[140px] w-full resize-none rounded-lg border border-[#d8bfa2] bg-white p-3 text-sm" placeholder="맛있게 드셨나요? 후기를 남겨 주세요."/></label>
-    <p className="mt-1 text-right text-xs text-muted">{text.length}/500</p><button disabled={busy||!text.trim()} className={`${primary} mt-4 w-full`}>리뷰 등록</button>
+    <p className="mt-1 text-right text-xs text-muted">{text.length}/500</p>
+    <ReviewPhotos photos={photos} setPhotos={setPhotos} onUpload={file=>onUpload(orderId,file)} disabled={busy} supported={photoSupported} onBusy={setUploading}/>
+    <button disabled={busy||uploading||!text.trim()} className={`${primary} mt-4 w-full`}>{uploading?'사진 처리 중…':'리뷰 등록'}</button>
   </form></Dialog>;
 }
 export function CartDialog({state,onClose,onOrder,onRemove,busy}){

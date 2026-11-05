@@ -39,13 +39,13 @@ export default function ProfileDialog({state,preferences,progress,onClose,onEqui
               </nav>
             </div>
             <div aria-label="장비 착용 슬롯" className="grid w-[88px] shrink-0 grid-rows-4 gap-2">
-              {['head','body','feet','neck'].map(slot=>{const item=items.find(i=>i.slot===slot),worn=item&&equipped[slot]===item.id;if(!item)return null;return <button key={slot} disabled={busy||!item.unlocked} aria-label={`${item.name} ${worn?'해제':'착용'}`} aria-pressed={worn} onClick={()=>onEquip(item.id)} className={`relative flex flex-col items-center justify-center rounded-[10px] border bg-[#fff7ea] disabled:opacity-50 ${worn?'border-[#ac762e] ring-1 ring-[#d9aa61]':'border-[#c9a989]'}`}>
+              {['head','body','feet','neck'].map(slot=>{const item=items.find(i=>i.slot===slot),worn=item&&equipped[slot]===item.id;if(!item)return null;return <button key={slot} disabled={busy||!worn} aria-label={`${item.name} ${worn?'해제':'미착용'}`} aria-pressed={worn} onClick={()=>onEquip(item.id)} className={`relative flex flex-col items-center justify-center rounded-[10px] border bg-[#fff7ea] disabled:opacity-50 ${worn?'border-[#ac762e] ring-1 ring-[#d9aa61]':'border-[#c9a989]'}`}>
                 <img alt="" src={art.profile[item.image]} className={`h-[31px] w-[48px] object-contain ${worn?'opacity-100':'opacity-40'}`}/>
-                <span className="text-[10px]">{item.name} · {worn?'해제':item.unlocked?'착용':'잠김'}</span>
+                <span className="text-[10px]">{item.name} · {worn?'해제':item.unlocked?'미착용':'잠김'}</span>
               </button>;})}
             </div>
           </div>
-          <h3 className="mx-[28px] mb-2 mt-4 font-retro text-[15px]">보유 아이템</h3>
+          <h3 className="mx-[28px] mb-2 mt-4 font-retro text-[15px]">보유 아이템</h3><p className="mx-7 mb-2 text-[10px] leading-4 text-muted">아이템 카드를 눌러 착용·해제해요. 오른쪽 슬롯은 착용 중인 장비를 해제할 수 있어요.</p>
           <div className="mx-[18px] grid grid-cols-4 gap-[6px] rounded-[15px] border-2 border-[#ecded0] bg-[#fdf3e780] p-[8px]">
             {items.map(item=><button key={item.id} disabled={busy||!item.unlocked} aria-label={`${item.name}: ${item.unlocked?(equipped[item.slot]===item.id?'착용 중, 해제':'획득 완료, 착용'):`잠김, ${item.targetFoodName||'떡볶이'} ${item.required}회 필요`}`} aria-pressed={equipped[item.slot]===item.id} onClick={()=>onEquip(item.id)} className={`flex min-h-[108px] flex-col items-center rounded-[10px] border py-2 ${item.unlocked?'border-[#d6a65d] bg-[#fff0cf]':'border-[#d8c7b4] bg-[#f6eadd]'}`}>
               <div className="relative h-[33px] w-[48px] overflow-hidden"><img alt="" src={art.profile[item.image]} className="size-full object-cover" style={item.slot==='neck'?{position:'absolute',height:'108.14%',width:'108.09%',left:'-4.13%',top:'-.08%'}:undefined}/></div>

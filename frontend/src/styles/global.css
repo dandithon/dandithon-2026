@@ -8,9 +8,9 @@
 @font-face { font-family: 'Mona12'; src: url('/fonts/Mona12TextKR-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
 @theme {
   --font-sans: 'Pretendard', sans-serif;
-  --font-pixel: 'Galmuri9', monospace;
+  --font-pixel: 'NeoDunggeunmo', 'Galmuri9', monospace;
   --font-retro: 'NeoDunggeunmo', 'Galmuri9', monospace;
-  --font-mona: 'Mona12', monospace;
+  --font-mona: 'NeoDunggeunmo', 'Galmuri9', monospace;
   --color-paper: #f9ebd8;
   --color-ink: #3d2b21;
   --color-muted: #8b7563;
@@ -18,7 +18,9 @@
 @layer base {
   html { background: #202822; color: var(--color-ink); }
   body { margin: 0; min-width: 280px; }
-  button { cursor: pointer; }
+  button { cursor: pointer; font-family: var(--font-retro); }
+  h1, h2, h3 { font-family: var(--font-retro); }
+  input, textarea, select { font-family: var(--font-sans); }
   button:disabled { cursor: not-allowed; }
   button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #2672c9; outline-offset: 2px; }
   img { user-select: none; }

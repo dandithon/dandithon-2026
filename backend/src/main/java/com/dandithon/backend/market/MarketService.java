@@ -19,8 +19,9 @@ public class MarketService {
     private final UserRepository users;
     private final PurchaseProgressService progress;
     private final Clock clock;
-    public MarketService(MarketCatalog catalog,OrderRepository orders,ReviewRepository reviews,UserRepository users,PurchaseProgressService progress,Clock clock) {
-        this.catalog=catalog;this.orders=orders;this.reviews=reviews;this.users=users;this.progress=progress;this.clock=clock;
+    private final ReviewPhotoService photos;
+    public MarketService(MarketCatalog catalog,OrderRepository orders,ReviewRepository reviews,UserRepository users,PurchaseProgressService progress,Clock clock,ReviewPhotoService photos) {
+        this.catalog=catalog;this.orders=orders;this.reviews=reviews;this.users=users;this.progress=progress;this.clock=clock;this.photos=photos;
     }
     public record ItemRequest(String menuId,Integer quantity) {}
     public record OrderRequest(String storeId,List<ItemRequest> items) {}
@@ -94,13 +95,14 @@ public class MarketService {
         if(images.size()>5)throw ApiException.invalid("이미지는 최대 5개까지 첨부할 수 있어요.");
         for(String url:images) {
             if(url==null||url.length()>2048||url.isBlank())throw ApiException.invalid("이미지 주소를 확인해 주세요.");
-            try {var uri=URI.create(url);if(!(url.startsWith("/assets/")&&!url.contains("..")||("https".equals(uri.getScheme())&&uri.getHost()!=null)))throw new IllegalArgumentException();}
+            try {var uri=URI.create(url);if(!((url.startsWith("/assets/")||url.startsWith(ReviewPhotoService.PREFIX))&&!url.contains("..")||("https".equals(uri.getScheme())&&uri.getHost()!=null)))throw new IllegalArgumentException();}
             catch(IllegalArgumentException e){throw ApiException.invalid("이미지는 /assets/ 경로나 HTTPS 주소만 허용해요.");}
         }
         var user=lockedUser();
         var order=orders.findById(request.orderId()).filter(o->o.userId==1).orElseThrow(()->new ApiException("ORDER_NOT_FOUND","주문을 찾을 수 없어요.",HttpStatus.NOT_FOUND));
         if(!"ready".equals(order.status(now())))throw new ApiException("INVALID_ORDER_STATUS","조리 완료 주문에 리뷰를 한 번만 작성할 수 있어요.",HttpStatus.BAD_REQUEST);
         var review=new GameReview(order,user.getNickname(),request.rating(),text,images,now());
+        photos.attach(images,order.id,review.id);
         reviews.save(review);order.reviewed=true;
         return new ReviewResult(review.id,order.id,review.rating,review.text,review.authorName,date(review.createdAt));
     }
@@ -118,6 +120,7 @@ public class MarketService {
         if (review.orderId != null) {
             orders.findById(review.orderId).ifPresent(order -> order.reviewed = false);
         }
+        photos.deleteForReview(review.id);
         reviews.delete(review);
         return new ReviewDeleteResult(reviewId, true);
     }
