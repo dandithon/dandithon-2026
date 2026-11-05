@@ -81,6 +81,9 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | 내 정보 조회 | `GET` | `/api/v1/users/me` | 기본 정보, 잔액, 레벨, 착용 장비 |
 | 닉네임 변경 | `PATCH` | `/api/v1/users/me/nickname` | 닉네임 수정 (MVP 선택) |
 | 코인 충전 | `POST` | `/api/v1/users/me/charge` | 시연용 코인 충전 (기본 100,000 코인) |
+| 경험치 획득/레벨업 | `POST` | `/api/v1/users/me/exp` | 경험치 획득 및 자동 레벨업 (주문 시 10% 자동 지급) |
+| 즐겨찾기 목록 조회 | `GET` | `/api/v1/users/me/favorites` | 내 즐겨찾기 가게 ID 목록 |
+| 즐겨찾기 토글 | `PATCH` | `/api/v1/users/me/favorites/{storeId}` | 특정 가게 즐겨찾기 등록/해제 토글 |
 | 데모 초기화 | `POST` | `/api/v1/demo/reset` | 발표 시연용 데이터 초기화 (코인 1,000 복구) |
 | 장비 목록 조회 | `GET` | `/api/v1/profile/equipments` | 가방 탭: 획득 및 착용 여부 |
 | 장비 착용/해제 | `PATCH` | `/api/v1/profile/equipments/{id}/toggle` | 장비 착용 또는 해제 |
@@ -96,6 +99,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | 영수증 목록 조회 | `GET` | `/api/v1/orders/receipts` | 내 영수증 및 조리 상태 확인 |
 | 가게 리뷰 목록 | `GET` | `/api/v1/stores/{storeId}/reviews` | 가게별 작성된 리뷰 조회 |
 | 리뷰 작성 | `POST` | `/api/v1/reviews` | 조리 완료 주문 건 리뷰 작성 |
+| 리뷰 삭제 | `DELETE` | `/api/v1/reviews/{reviewId}` | 작성한 리뷰 삭제 및 주문 상태 복구 |
 | 가게 둘러보기 기록 | `POST` | `/api/v1/stores/{storeId}/browse` | 가게 상세 진입 시 당일 고유 가게 집계 |
 | 퀘스트 목록 조회 | `GET` | `/api/v1/quests` | 일일 미션/퀘스트/이벤트 목록 |
 | 퀘스트 보상 수령 | `POST` | `/api/v1/quests/{questId}/claim` | 완료된 퀘스트 코인 수령 |
@@ -186,10 +190,44 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 
 ---
 
-### 4.2-2 시연용 데모 데이터 초기화 (발표 전 리셋)
+### 4.2-2 경험치 획득 및 자동 레벨업
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/users/me/exp`
+- **설명**: 사용자가 경험치를 획득하며, `nextLevelExp` 도달 시 자동으로 레벨이 증가하고 다음 목표 경험치가 갱신됩니다. (음식 주문 시에도 결제 금액의 10%가 자동 적립됩니다.)
+- **Request Body (선택, 생략 시 기본 50 exp)**:
+```json
+{
+  "exp": 50
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "nickname": "최수연",
+    "balance": 200000,
+    "level": 2,
+    "exp": 10,
+    "nextLevelExp": 200,
+    "equipped": {
+      "head": null,
+      "body": null,
+      "feet": null,
+      "neck": null
+    }
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.2-3 시연용 데모 데이터 초기화 (발표 전 리셋)
 - **Method**: `POST`
 - **Endpoint**: `/api/v1/demo/reset`
-- **설명**: 주문 내역, 리뷰, 구매 횟수(배지 진행도)를 전부 초기화하고 유저 코인을 1,000으로 원상복구합니다.
+- **설명**: 주문 내역, 리뷰, 구매 횟수(배지 진행도), 즐겨찾기를 전부 초기화하고 유저 코인을 1,000으로 원상복구합니다.
 - **Response (200 OK)**:
 ```json
 {
@@ -206,11 +244,52 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
       "body": null,
       "feet": null,
       "neck": null
-    }
+    },
+    "favorites": []
   },
   "error": null
 }
 ```
+
+---
+
+### 4.2-4 즐겨찾기 가게 목록 조회
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/users/me/favorites`
+- **설명**: 현재 사용자가 즐겨찾기한 가게 ID 목록을 반환합니다.
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "favorites": ["seomun", "coffee"]
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.2-5 특정 가게 즐겨찾기 등록/해제 토글
+- **Method**: `PATCH`
+- **Endpoint**: `/api/v1/users/me/favorites/{storeId}`
+- **설명**: 해당 가게가 즐겨찾기에 없으면 추가(`favorite: true`), 이미 있으면 제거(`favorite: false`)합니다.
+- **Path Variable**:
+  - `storeId` (String): 가게 식별자 (`seomun`, `noodle`, `hotteok`, `coffee`)
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "storeId": "seomun",
+    "favorite": true,
+    "favorites": ["seomun"]
+  },
+  "error": null
+}
+```
+- **오류 응답**:
+  - `404 Not Found`: 존재하지 않는 가게 ID인 경우 (`STORE_NOT_FOUND`)
 
 ---
 
@@ -627,6 +706,29 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
   "error": null
 }
 ```
+
+---
+
+### 4.12-2 작성한 리뷰 삭제
+- **Method**: `DELETE`
+- **Endpoint**: `/api/v1/reviews/{reviewId}`
+- **설명**: 본인이 작성했던 리뷰를 삭제합니다. 리뷰가 삭제되면 연관된 주문의 `reviewed` 상태가 `false`(`ready`)로 되돌아가, 필요 시 재작성할 수 있습니다.
+- **Path Variable**:
+  - `reviewId` (String): 리뷰 식별자
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "reviewId": "rev-new-001",
+    "deleted": true
+  },
+  "error": null
+}
+```
+- **오류 응답**:
+  - `404 Not Found`: 존재하지 않는 리뷰 ID (`REVIEW_NOT_FOUND`)
+  - `403 Forbidden`: 타인이 작성한 리뷰를 삭제하려 할 경우 (`FORBIDDEN`)
 
 ---
 

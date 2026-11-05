@@ -67,6 +67,7 @@ public class MarketService {
         var lines=quantities.entrySet().stream().map(e->new GameOrder.Line(catalog.menu(store,e.getKey()),e.getValue())).toList();
         long total=lines.stream().mapToLong(l->l.price*l.quantity).sum();
         user.spend(total);
+        user.gainExp(Math.max(10L, total / 10L));
         var order=new GameOrder("ord-"+UUID.randomUUID(),store,key,signature,total,user.getBalance(),now(),lines);
         orders.save(order);
         for(var line:lines)progress.recordSuccessfulPurchase(1,order.id+":"+line.menuId,line.menuId);
@@ -102,6 +103,23 @@ public class MarketService {
         var review=new GameReview(order,user.getNickname(),request.rating(),text,images,now());
         reviews.save(review);order.reviewed=true;
         return new ReviewResult(review.id,order.id,review.rating,review.text,review.authorName,date(review.createdAt));
+    }
+    public record ReviewDeleteResult(String reviewId, boolean deleted) {}
+    @Transactional
+    public ReviewDeleteResult deleteReview(String reviewId) {
+        if (reviewId == null || reviewId.isBlank()) {
+            throw ApiException.invalid("리뷰를 확인해 주세요.");
+        }
+        var review = reviews.findById(reviewId)
+            .orElseThrow(() -> new ApiException("REVIEW_NOT_FOUND", "리뷰를 찾을 수 없어요.", HttpStatus.NOT_FOUND));
+        if (review.userId != 1L) {
+            throw new ApiException("FORBIDDEN", "본인이 작성한 리뷰만 삭제할 수 있어요.", HttpStatus.FORBIDDEN);
+        }
+        if (review.orderId != null) {
+            orders.findById(review.orderId).ifPresent(order -> order.reviewed = false);
+        }
+        reviews.delete(review);
+        return new ReviewDeleteResult(reviewId, true);
     }
     GuestUser lockedUser() {return users.findForUpdate(1).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));}
     LocalDateTime now() {return LocalDateTime.now(clock.withZone(ZoneId.of("Asia/Seoul")));}
