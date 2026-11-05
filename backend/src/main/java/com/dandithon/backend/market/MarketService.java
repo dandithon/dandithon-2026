@@ -41,7 +41,7 @@ public class MarketService {
             String level=crowd(minutes);
             String label=switch(level){case "CALM"->"여유";case "NORMAL"->"보통";case "CROWDED"->"혼잡";default->"매우 혼잡";};
             int npcs=switch(level){case "CALM"->2;case "NORMAL"->4;case "CROWDED"->7;default->10;};
-            return new StoreSummary(s.id(),s.name(),s.category(),minutes,level,label,queue==null?npcs:queue.npcCount(),s.tags(),true,queue==null?"STATIC_DEMO":"SYNTHETIC_MODEL",queue==null?null:queue.modelVersion(),queue!=null,queue==null?null:queue.secondsPerSimulatedMinute());
+            return new StoreSummary(s.id(),s.name(),s.category(),minutes,level,label,queue==null?npcs:queue.npcCount(),s.tags(),true,queue==null?"STATIC_DEMO":"SYNTHETIC_DEMO_QUEUE",queue==null?null:queue.modelVersion(),queue!=null,queue==null?null:queue.secondsPerSimulatedMinute());
         }).toList();
     }
     public StoreDetail store(String id) {
@@ -70,11 +70,9 @@ public class MarketService {
         var lines=quantities.entrySet().stream().map(e->new GameOrder.Line(catalog.menu(store,e.getKey()),e.getValue())).toList();
         long total=lines.stream().mapToLong(l->l.price*l.quantity).sum();
         var orderedAt=now();
-        var plan=eta.plan(store.id(),quantities,orderedAt);
         user.spend(total);
         user.gainExp(Math.max(10L, total / 10L));
         var order=new GameOrder("ord-"+UUID.randomUUID(),store,key,signature,total,user.getBalance(),orderedAt,lines);
-        order.readyAt=plan.readyAt();order.etaModelVersion=plan.modelVersion();order.etaSecondsPerMinute=plan.secondsPerMinute();
         orders.save(order);
         for(var line:lines)progress.recordSuccessfulPurchase(1,order.id+":"+line.menuId,line.menuId);
         return orderResult(order);

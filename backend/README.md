@@ -57,17 +57,17 @@ JDK 21을 사용한다. macOS에서는 `export JAVA_HOME=$(/usr/libexec/java_hom
 
 ## BE2 API 및 처리 정책
 
-가게 목록/상세, 가게 리뷰, 주문, 영수증, 리뷰 등록, 퀘스트 목록/보상 등 BE2 8개 API를 구현했다. 전체 22개 경로는 Swagger에서 확인할 수 있다.
+가게 목록/상세, 가게 리뷰, 주문, 영수증, 리뷰 등록, 퀘스트 목록/보상 등 BE2 8개 API를 구현했다. 전체 24개 경로는 Swagger에서 확인할 수 있다.
 
 - Catalog: four stores and 16 menus in `market-catalog.json`, with `mock: true`. Fixed waits remain the default; Seomun synthetic ETA is opt-in (see below).
 - 가상 구매: 단일 가게 주문, 메뉴당 수량 1~99. 필수 `Idempotency-Key`로 재시도 중복 차감을 방지한다. 같은 구매 재시도에 같은 키를 보내고, 새로운 구매에는 새 키를 사용한다.
 - 사용자 행 잠금 아래 코인 차감·주문·구매 횟수가 함께 커밋된다. 실패하면 모두 롤백된다. 수량이 아닌 주문 메뉴 행마다 구매 횟수 +1. 장비/배지에 즉시 반영된다.
-- Receipts: legacy orders finish after 15 seconds. With Seomun ETA enabled, readiness follows the persisted predicted completion time. Reviews are allowed immediately after purchase; use canReview independently of cooking status. No real food order is placed.
+- Receipts: new user orders are instantly ready for the demo. AI estimates belong to a separate fictional general-customer queue. Reviews are immediate. Existing legacy deadlines are preserved; no real food order is placed.
 - 리뷰: 주문 전체에 1개. 별점 1~5, 내용 1~500자, 이미지 URL 최대 5개. 업로드 기능은 없다. 평점/리뷰 수는 저장된 리뷰로 계산한다.
 - 일일 미션: 한국시간 자정 초기화. 당일 서문분식 리뷰 1개 작성 시 200코인, 하루 1회 수령. 동시 수령에도 중복 지급되지 않는다.
 - 가게 3곳 둘러보기: 당일 서로 다른 가게 상세 진입 3곳, 300코인. `POST /api/v1/stores/{storeId}/browse`로 기록한다. 실제 방문 인증이 아니다.
 - 모자 착용해보기: 당일 떡볶이 모자 착용 성공 시 100코인. 해제 후에도 완료 기록 유지. 새 날에는 다시 착용해야 한다. 사진 미션은 제거했다. 업적/이벤트 목록은 비어 있다. 경험치/레벨업 정책은 추가하지 않았다.
-- DB는 V1~V5 Flyway로 생성한다. V1을 이미 실행한 DB에도 미적용 마이그레이션만 추가 적용되며 기존 프로필은 유지된다.
+- DB는 V1~V6 Flyway로 생성한다. V1을 이미 실행한 DB에도 미적용 마이그레이션만 추가 적용되며 기존 프로필은 유지된다.
 
 ### 주문 예시
 
@@ -92,7 +92,7 @@ export DB_PASSWORD='로컬 환경에서 입력'
 ```
 
 MySQL 드라이버·프로필과 Flyway 마이그레이션을 포함했다. JPA는 ddl-auto=validate라 임의로 스키마를 수정하지 않는다.
-V1~V5는 H2/MySQL 공통 SQL이다. **실제 MySQL 실행 검증은 별도로 필요하다.** H2 데이터는 자동 이관하지 않는다.
+V1~V6는 H2/MySQL 공통 SQL이다. **실제 MySQL 실행 검증은 별도로 필요하다.** H2 데이터는 자동 이관하지 않는다.
 자격 증명·DB 파일은 커밋하지 않는다. 현재 H2 개발 DB는 로컬 전용이며 공개 서비스용이 아니다.
 DB 계정·네트워크·사용자 격리·인증은 실제 배포 전에 별도 확정해야 한다.
 
@@ -110,4 +110,6 @@ V3 daily_activities 테이블과 browse API를 포함한 백엔드를 먼저 배
 ## 서문분식 AI 준비시간 시제품
 합성 주문 5,000건 학습·평가·재현 방법은 [모델 설명](ml/README.md)을 참고한다. `GET/POST /api/v1/stores/seomun/eta`로 현재 대기열 및 주문 전 견적을 확인할 수 있다. 운영 시 Python 서버는 불필요하며 학습된 트리 JSON을 Spring이 직접 읽는다.
 
-프론트 연결 전까지 `SEOMUN_ETA_ENABLED=false`가 기본이다. 활성화 시에만 서문분식 주문 완료시간과 `/stores` 대기시간이 모델에 연결된다. `SEOMUN_ETA_SECONDS_PER_MINUTE=5`는 가상 1분당 실제 5초 진행, 60은 실제 시간 배속이다. 실제 매장 예측으로 표시하면 안 된다. 새 V5는 기존 주문을 보존하고 완료 시각을 추가한다. 상세 응답과 FE 연결 사항은 docs/API.md의 2026-11-05 AI 항목 참조.
+사용자 주문은 즉시 `ready`, `readyAfterSeconds=0`이며 리뷰 가능하다. AI 대기열은 별도 가상 일반 주문으로 구성한다. `POST /api/v1/demo/seomun/queue/seed`로 NPC 약 7명(모델 합계 약 20분)을 구성하고 페이지를 새로고침한다. 코인·사용자 영수증·미션에는 영향을 주지 않는다. 자동 생성은 하지 않는다.
+
+`SEOMUN_ETA_ENABLED=true`, `SEOMUN_ETA_SECONDS_PER_MINUTE=60`이 기본이다. 빠른 시연은 배속을 5로 설정하고 다시 seed한다. `DELETE /api/v1/demo/seomun/queue`는 가상 줄만 비우며 전체 demo/reset도 가상 줄을 초기화한다. 프론트 파일은 수정하지 않았다. V6는 가상 대기열 테이블을 추가한다. 상세 설명은 docs/API.md 및 ml/README.md 참조.

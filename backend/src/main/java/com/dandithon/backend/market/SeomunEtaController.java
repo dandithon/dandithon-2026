@@ -13,7 +13,7 @@ public class SeomunEtaController {
     public record Request(List<MarketService.ItemRequest> items) {}
     @Operation(summary="서문분식 현재 대기열 (합성 데이터 기반 시연, 실제 매장 정보 아님)")
     @GetMapping public ApiResponse<?> queue(@PathVariable String storeId){return ApiResponse.ok(service.queue(storeId));}
-    @Operation(summary="서문분식 메뉴별 AI 준비시간 견적 (조회 전용, 주문/코인 차감 없음)")
+    @Operation(summary="서문분식 메뉴별 AI 준비시간 견적 (조회 전용, 사용자 주문은 즉시 완료, 코인 차감 없음)")
     @PostMapping public ApiResponse<?> quote(@PathVariable String storeId,@RequestBody(required=false) Request request){
         if(request==null)throw ApiException.invalid("주문 메뉴를 입력해 주세요.");
         return ApiResponse.ok(service.quote(storeId,request.items()));

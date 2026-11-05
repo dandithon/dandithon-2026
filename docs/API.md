@@ -823,73 +823,61 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 
 시연 초기화(`POST /api/v1/demo/reset`) 시 `daily_activities`의 가게 둘러보기·모자 착용 기록도 삭제한다. 기존 주문·리뷰·수령 내역과 함께 초기화하므로 당일 미션은 진행도 0으로 돌아가며, 새 행동으로 다시 완료할 수 있다.
 
-## 서문분식 합성 데이터 기반 AI 준비시간 (2026-11-05)
+## 서문분식 AI 가상 대기열 / 사용자 즉시 완료 (2026-11-05)
 
-대상은 서문분식(`seomun`)의 떡볶이·순대·튀김 세트·오뎅만이다. 자체 합성 데이터 5,000건으로 학습한 Random Forest이며 **실제 매장 대기시간 정보가 아니다.** 모델/가정/평가/재현은 `backend/ml/README.md` 참조. 이 작업에서는 프론트 파일을 수정하지 않는다.
+### 사용자 주문
+`POST /api/v1/orders`로 성공한 사용자 주문은 **모든 가게에서 시연용 우선 처리로 즉시 조리 완료**한다. `status=ready`, `readyAfterSeconds=0`이며 영수증 `canReview=true`다. 주문당 리뷰 1개·입력 검증·코인 차감·구매 집계·멱등성은 유지한다. 리뷰 작성 후 false, 삭제 후 다시 true다. 조리 상태와 무관하게 리뷰를 허용한다.
 
-### 현재 대기열
+사용자 주문은 아래 가상 일반 대기열에 추가되지 않는다. “일반 주문의 AI 예상 대기시간”과 “시연 사용자 즉시 완료”를 구분한다. 기존 DB 주문의 V5 완료 시각은 소급 변경하지 않는다.
+
+### 가상 일반 주문 생성
+`POST /api/v1/demo/seomun/queue/seed` (본문 없음)
+
+기존 가상 대기열을 **교체**하고 튀김·떡볶이·순대·튀김·오뎅·떡볶이·튀김 각 1개, 총 7건을 넣는다. 학습 모델의 준비시간을 순서대로 더한 약 19.9분 → NPC 7명. 실제 손님 7명이 아니라 대기시간 3분당 1명의 시각적 표시다. 중복/동시 요청도 7건만 유지되며, 의도적인 재호출은 시연 시계를 새로 시작한다. 사용자 주문·코인·경험치·리뷰·미션을 변경하지 않는다. 자동 생성/자동 재시드는 없다.
+
+### 가상 대기열 조회
 `GET /api/v1/stores/seomun/eta`
 
 ```json
 {
-  "success": true,
-  "data": {
-    "storeId": "seomun",
-    "activeOrders": 0,
-    "waitTimeMinutes": 0.0,
-    "npcCount": 0,
-    "source": "SYNTHETIC_MODEL",
-    "modelVersion": "seomun-rf-synthetic-v1",
-    "synthetic": true,
-    "secondsPerSimulatedMinute": 5,
-    "appliedToOrders": false
+  "success":true,
+  "data":{
+    "storeId":"seomun",
+    "activeOrders":7,
+    "waitTimeMinutes":19.95,
+    "npcCount":7,
+    "source":"SYNTHETIC_DEMO_QUEUE",
+    "modelVersion":"seomun-rf-synthetic-v1",
+    "synthetic":true,
+    "secondsPerSimulatedMinute":60,
+    "appliedToOrders":false
   },
-  "error": null
+  "error":null
 }
 ```
 
-- `activeOrders`: 완료 시각이 현재보다 뒤인 서문분식 주문 수(메뉴 행/수량이 아님).
-- `waitTimeMinutes`: **기존 대기 주문을 모두 준비하기까지 남은 가상 분**, 새 주문의 준비시간은 포함하지 않는다.
-- `npcCount`: 0분은 0명, 초과 시 `ceil(분/3)`, 지도 표시를 위한 최대 10명. 실제 인원수가 아니다. 최대치를 넘어도 대기시간 수치는 잘라내지 않는다.
-- `waitTimeMinutes` 표시는 소수 둘째 자리 반올림, NPC는 반올림 전 값으로 계산한다.
-- 조회 시 주문/코인/퀘스트는 변경하지 않는다. 접수·시간 경과·초기화에 따라 결과가 바뀐다.
+예시는 seed 직후의 값이며 실제 시간 경과에 따라 달라진다. `waitTimeMinutes`는 가상 일반 주문을 모두 처리하기까지 남은 가상 분이다. NPC는 0분 0명, 양수 ceil(분/3), 최대 10명. activeOrders는 남은 가상 주문 수로 NPC 수와 항상 같지는 않다. `appliedToOrders=false`는 사용자 주문에 이 ETA를 적용하지 않음을 뜻한다.
 
-### 주문 전 준비 완료시간 견적
+### 가상 일반 주문의 추가 견적
 `POST /api/v1/stores/seomun/eta`
 
 ```json
 {"items":[{"menuId":"tteok","quantity":1},{"menuId":"fried","quantity":1}]}
 ```
 
-응답 `data` 필드:
+새 일반 주문을 넣는다는 가정으로 `queueWaitMinutes`, 모델의 `preparationMinutes`, 합계 `estimatedMinutes`, 배속을 적용한 `readyAfterSeconds`, 해당 견적의 `npcCount`와 모델/합성 메타데이터를 반환한다. **조회 전용이며 사용자 주문의 완료시간 견적이 아니다.** 실제 주문 생성/차감은 하지 않는다. 메뉴 1~4행, 수량 1~99 정수, 중복 메뉴 거부. 미지원 가게는 INVALID_INPUT_VALUE(400), 없는 가게 STORE_NOT_FOUND(404), 잘못된 메뉴 MENU_NOT_FOUND(404).
 
-| 필드 | 의미 |
-|---|---|
-| storeId | seomun |
-| queueWaitMinutes | 먼저 접수된 주문의 남은 가상 분 |
-| preparationMinutes | 입력한 메뉴·수량에 대한 모델의 준비시간 예측 |
-| estimatedMinutes | 대기 + 해당 주문 준비시간 |
-| readyAfterSeconds | 현재 배속에서 예상 실제 대기 초, 올림 |
-| npcCount | 이 견적 전체 시간에 대응하는 NPC 수; 현재 지도 대기열은 GET 응답 사용 |
-| source / modelVersion / synthetic | SYNTHETIC_MODEL / seomun-rf-synthetic-v1 / true |
-| secondsPerSimulatedMinute | 가상 1분당 실제 초(기본 5) |
-| appliedToOrders | 주문 적용 기능 활성화 여부 |
+### 초기화
+- `DELETE /api/v1/demo/seomun/queue`: 가상 일반 대기열만 비움. 사용자 주문/잔액은 유지.
+- 기존 `POST /api/v1/demo/reset`: 사용자 데이터 초기화에 더해 가상 일반 대기열도 비움.
 
-조회 전용 견적이므로 멱등키가 필요 없고 주문·코인 차감·구매 집계가 발생하지 않는다. 견적 후 다른 주문이 들어오면 실제 주문 시각의 ETA가 달라질 수 있다. 실제 주문에서는 서버가 메뉴·대기열을 다시 확인하며 클라이언트가 대기 주문 수나 예측값을 주입할 수 없다.
+### 표시 / 설정 / FE 전달
+- `SEOMUN_ETA_ENABLED=true` 기본: `/stores`의 서문분식 대기시간·NPC 수는 가상 일반 대기열을 반영한다. false면 예전 고정 시연값 유지. 사용자 즉시 완료는 설정과 무관하다.
+- `SEOMUN_ETA_SECONDS_PER_MINUTE=60` 기본, 5로 설정하면 가상 1분을 실제 5초로 진행한다. 진행 중 설정 변경 후에는 seed를 다시 호출한다.
+- `/stores`의 서문분식 `waitTimeSource=SYNTHETIC_DEMO_QUEUE`, `synthetic=true`, `mock=true`, `modelVersion`, `secondsPerSimulatedMinute`를 제공한다. 타 가게의 고정 시연값은 유지한다.
+- 기존 FE는 서버 `npcCount`를 읽으므로 **seed 후 페이지 새로고침하면 7명 표시 가능**하다. 이번 작업에서 frontend 파일은 수정하지 않는다. 자동 갱신은 추후 폴링 연결 필요.
+- 화면/발표에서 일반 손님 줄은 “합성 데이터 기반 시연 대기열”, 사용자 주문은 “시연용 우선 즉시 완료”로 설명한다. 실제 매장 혼잡도나 실측 정확도로 주장하지 않는다.
+- V5 기존 주문 보존, V6 가상 일반 주문 전용 테이블. 운영 MariaDB 마이그레이션 및 seed는 배포 후 확인한다.
 
-검증: 1~4개 메뉴 행, 각 메뉴 수량 1~99 정수, 중복 메뉴 거부. 비어 있는 본문/항목·잘못된 수량·다른 가게의 예측 요청은 `INVALID_INPUT_VALUE`(400), 없는 가게는 `STORE_NOT_FOUND`(404), 서문분식에 없는 메뉴는 `MENU_NOT_FOUND`(404).
-
-### 기존 API와 연결 / 프론트 전달 사항
-- `SEOMUN_ETA_ENABLED=false`가 기본. 기존 `/orders`의 15초 완료와 `/stores`의 고정 대기시간은 유지한다. 새 API는 미리 검증 가능하지만 `appliedToOrders=false`임을 표시한다.
-- 프론트가 시연 표시 및 갱신을 준비한 뒤 true로 전환한다. 활성화 시 서문분식 주문의 완료 시각은 FIFO 대기 + 학습 모델 준비시간으로 결정해 DB에 저장한다. 사용자 행 잠금·기존 주문 재시도 검사 안에서 처리하므로 중복 구매가 대기열을 늘리지 않는다. 코인 부족·트랜잭션 롤백도 대기열을 남기지 않는다.
-- 활성화된 `/stores`의 서문분식 `waitTimeMinutes`는 GET 대기열의 분을 정수 올림한 값이다. `npcCount`는 서버 값을 사용한다. 기타 가게의 대기시간/혼잡도는 기존 시연 값이다.
-- `/stores`에 `waitTimeSource` (`STATIC_DEMO` 또는 `SYNTHETIC_MODEL`), `modelVersion`, `synthetic`, `secondsPerSimulatedMinute`가 추가된다. 기존 `mock:true`는 유지한다.
-- 가게 상세의 메뉴 데이터는 그대로 유지한다. 화면에서 “합성 데이터 기반 AI 시연 예상”이라고 표시하고 실제 방문객 수/매장 관측값으로 표시하지 않는다.
-- 프론트는 주문 성공 후 및 지도 활성화 중 적절한 간격(예: 5초)으로 대기열을 재조회해야 한다. 이번에는 폴링/NPC 렌더링을 변경하지 않았다.
-- 조리 상태는 저장된 완료 시각을 따르지만 리뷰는 주문 성공 직후부터 가능하다. 프론트는 `status`가 아닌 `canReview`로 작성 버튼을 판단한다. `readyAfterSeconds`를 15로 하드코딩하지 않는다. 이 값은 최초 대기 초이며 매 조회 시 남은 시간을 의미하지 않는다.
-- V5는 기존 주문에 15초 완료 시각을 채우며 삭제하지 않는다. 운영 MariaDB 마이그레이션 적용 검증은 배포 담당자 확인이 필요하다.
-
-### 리뷰 작성 시점 변경 (2026-11-05)
-주문 성공 직후 조리 중에도 리뷰 작성 가능. 영수증의 `canReview`는 리뷰 미작성 여부이며, `cooking`이어도 true다. 주문당 1개 제한, 작성 후 모든 메뉴 행의 `canReview=false`, 중복 요청은 기존 `INVALID_ORDER_STATUS`(400)를 유지한다. 삭제하면 즉시 다시 작성할 수 있다. 조리 중 리뷰 작성/삭제는 저장된 완료 시각이나 대기열을 줄이지 않는다. 상태 `reviewed`는 리뷰 표시이고 조리 완료를 보장하지 않는다.
-
-프론트 인계: 현재 ReceiptDialog와 App.openReview가 `status==='ready'`로 제한하고 있어 `canReview` 기준으로 변경해야 한다. 이번 백엔드 작업에서는 frontend 파일을 수정하지 않았다.
+### 리뷰
+주문 직후 canReview=true, 이미 리뷰가 있으면 false. 중복 리뷰는 INVALID_ORDER_STATUS(400). 리뷰 작성/삭제는 가상 대기열과 무관하다. 프론트의 기존 ready 제한은 신규 주문이 즉시 ready이므로 별도 수정 없이 통과한다.

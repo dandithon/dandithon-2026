@@ -32,7 +32,7 @@ public class GameOrder {
     protected GameOrder() {}
     GameOrder(String id,MarketCatalog.Store store,String key,String signature,long total,long balance,LocalDateTime now,List<Line> lines) {
         this.id=id;userId=1;storeId=store.id();storeName=store.name();requestKey=key;requestSignature=signature;
-        totalPrice=total;remainingBalance=balance;orderedAt=now;readyAt=now.plusSeconds(15);etaSecondsPerMinute=60;this.lines.addAll(lines);
+        totalPrice=total;remainingBalance=balance;orderedAt=now;readyAt=now;etaSecondsPerMinute=60;this.lines.addAll(lines);
     }
     String status(LocalDateTime now) {return reviewed?"reviewed":now.isBefore(readyAt==null?orderedAt.plusSeconds(15):readyAt)?"cooking":"ready";}
 }
