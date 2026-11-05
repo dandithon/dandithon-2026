@@ -113,7 +113,13 @@ export default function App(){
     try{setState(await marketApi.refreshQuests());}
     catch{notify('장비는 반영됐어요. 미션 창에서 최신 진행도를 다시 확인해 주세요.');}
   });
-  const visit=id=>run(async()=>{setState(await marketApi.visit(id));setStoreId(id);setPage('store');setModal(null);});
+  const visit=id=>run(async()=>{
+    // Store details were loaded with the catalog. Mission recording must not
+    // prevent browsing when the deployed backend does not support it yet.
+    setStoreId(id);setPage('store');setModal(null);
+    try{setState(await marketApi.visit(id));}
+    catch{notify('가게 정보는 볼 수 있어요. 둘러보기 미션 기록은 반영 여부를 확인하지 못했어요.');}
+  });
   const showLocation=event=>{
     if(!storeLocations[store.id]){notify('이 가게의 지도 위치를 준비하고 있어요.');return;}
     locationTrigger.current=event.currentTarget;
