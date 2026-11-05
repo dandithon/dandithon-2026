@@ -25,7 +25,7 @@
 - Production은 `VITE_DATA_MODE=live`와 Cloudtype `/api/v1` 주소를 사용한다. Preview는 `VITE_DATA_MODE=mock`으로 별도 검수한다.
 - 기존 비공개 조직 저장소의 Hobby 제한은 Public 전환으로 이번 연결에서 해소됐다. 공개 전 검토 결과는 `docs/PUBLICATION_REVIEW.md` 참고.
 
-주의: 수동 배포한 버튼·창 전환 효과는 아직 main에 병합되지 않았다. 다음 main 배포는 main의 코드를 그대로 반영하므로 해당 효과를 유지하려면 효과 커밋을 별도 PR로 병합해야 한다. 롤백한 책 페이지 넘김 효과는 반영하지 않는다.
+주의: 수동 배포한 버튼·창 전환 효과는 아직 main에 병합되지 않았다. 다음 main 배포는 main의 코드를 그대로 반영하므로 해당 효과를 유지하려면 효과 커밋을 별도 PR로 병합해야 한다.
 
 ### 모바일 너비 대응 수정 및 재배포 대기
 
