@@ -22,8 +22,8 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 2. **보상 카운트 반영 시점**: `POST /api/v1/orders` (코인 결제 성공) 즉시 해당 음식의 누적 횟수가 증가하고 장비/배지 달성 조건이 갱신됩니다.
 3. **장비 획득 기준 (Figma 반영)**: 1회(모자), 3회(자켓), 5회(신발), 8회(목도리)
 4. **배지 획득 기준 (PRD 반영)**: 3회(브론즈), 5회(실버), 10회(골드)
-5. **조리 상태 3단계**: `cooking`(조리 중) → `ready`(조리 완료) → `reviewed`(리뷰 작성 완료)
-   - 조리 완료(`ready`) 상태의 주문만 리뷰 작성이 활성화됩니다.
+5. **영수증 표시 상태**: `cooking`(조리 중), `ready`(조리 완료), `reviewed`(리뷰 작성 완료). 조리 중에도 리뷰 작성 시 `reviewed`로 표시하며, 실제 시연 대기열은 별도 완료 시각을 따른다.
+   - 주문 성공 직후부터 리뷰를 작성할 수 있습니다. 조리 완료 여부와 무관하며 주문당 리뷰 1개만 허용합니다.
 6. **혼잡도 구간 (`~이상 ~미만`)**:
    - `0분 이상 5분 미만`: 여유 (NPC 1~2명)
    - `5분 이상 10분 미만`: 보통 (NPC 3~5명)
@@ -66,7 +66,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | `MENU_NOT_FOUND` | 404 | 메뉴를 찾을 수 없음 |
 | `ORDER_NOT_FOUND` | 404 | 주문 건을 찾을 수 없음 |
 | `INSUFFICIENT_BALANCE` | 400 | 코인 잔액 부족 |
-| `INVALID_ORDER_STATUS` | 400 | 조리 완료 상태가 아닌 주문에 리뷰 작성 시도 등 |
+| `INVALID_ORDER_STATUS` | 400 | 이미 리뷰가 작성된 주문에 중복 리뷰 작성 시도 등 |
 | `EQUIPMENT_LOCKED` | 400 | 아직 획득하지 않은 장비 착용 시도 |
 | `QUEST_NOT_COMPLETED` | 400 | 아직 완료되지 않았거나 이미 수령한 퀘스트 보상 요청 |
 | `INTERNAL_SERVER_ERROR` | 500 | 서버 내부 오류 |
@@ -98,7 +98,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | 코인 결제 및 주문 | `POST` | `/api/v1/orders` | 코인 차감, 주문 생성, 횟수 반영 |
 | 영수증 목록 조회 | `GET` | `/api/v1/orders/receipts` | 내 영수증 및 조리 상태 확인 |
 | 가게 리뷰 목록 | `GET` | `/api/v1/stores/{storeId}/reviews` | 가게별 작성된 리뷰 조회 |
-| 리뷰 작성 | `POST` | `/api/v1/reviews` | 조리 완료 주문 건 리뷰 작성 |
+| 리뷰 작성 | `POST` | `/api/v1/reviews` | 주문 성공 직후 리뷰 작성 (주문당 1개) |
 | 리뷰 삭제 | `DELETE` | `/api/v1/reviews/{reviewId}` | 작성한 리뷰 삭제 및 주문 상태 복구 |
 | 가게 둘러보기 기록 | `POST` | `/api/v1/stores/{storeId}/browse` | 가게 상세 진입 시 당일 고유 가게 집계 |
 | 퀘스트 목록 조회 | `GET` | `/api/v1/quests` | 일일 미션/퀘스트/이벤트 목록 |
@@ -613,7 +613,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
         "menuName": "떡볶이",
         "quantity": 1,
         "status": "cooking",
-        "canReview": false,
+        "canReview": true,
         "orderedAt": "2026-11-01T13:00:00"
       },
       {
@@ -678,7 +678,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 
 ### 4.12 리뷰 작성
 
-주문 전체당 1개만 작성한다. 별점은 정수 1~5, 내용은 앞뒤 공백 제거 후 Unicode 코드포인트 1~500자다. `imageUrls`는 생략 또는 빈 배열을 허용하며 최대 5개, 각 2,048자 이내의 `/assets/` 경로 또는 HTTPS 주소를 받는다. 파일 업로드·사진 인증 기능은 포함하지 않는다. 아직 조리 중이거나 이미 리뷰를 작성한 주문에는 `INVALID_ORDER_STATUS`를 반환한다. 리뷰 별점·개수는 저장된 리뷰에서 계산하며 최초에는 0이다. 작성자 닉네임은 작성 당시 값으로 보관한다.
+주문 전체당 1개만 작성한다. 별점은 정수 1~5, 내용은 앞뒤 공백 제거 후 Unicode 코드포인트 1~500자다. `imageUrls`는 생략 또는 빈 배열을 허용하며 최대 5개, 각 2,048자 이내의 `/assets/` 경로 또는 HTTPS 주소를 받는다. 파일 업로드·사진 인증 기능은 포함하지 않는다. 이미 리뷰를 작성한 주문에는 `INVALID_ORDER_STATUS`를 반환한다. 리뷰 별점·개수는 저장된 리뷰에서 계산하며 최초에는 0이다. 작성자 닉네임은 작성 당시 값으로 보관한다.
 
 - **Method**: `POST`
 - **Endpoint**: `/api/v1/reviews`
@@ -886,5 +886,10 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 - `/stores`에 `waitTimeSource` (`STATIC_DEMO` 또는 `SYNTHETIC_MODEL`), `modelVersion`, `synthetic`, `secondsPerSimulatedMinute`가 추가된다. 기존 `mock:true`는 유지한다.
 - 가게 상세의 메뉴 데이터는 그대로 유지한다. 화면에서 “합성 데이터 기반 AI 시연 예상”이라고 표시하고 실제 방문객 수/매장 관측값으로 표시하지 않는다.
 - 프론트는 주문 성공 후 및 지도 활성화 중 적절한 간격(예: 5초)으로 대기열을 재조회해야 한다. 이번에는 폴링/NPC 렌더링을 변경하지 않았다.
-- 영수증 상태와 리뷰 가능 여부는 저장된 완료 시각 기준이다. `readyAfterSeconds`를 15로 하드코딩하지 않는다. 이 값은 최초 대기 초이며 매 조회 시 남은 시간을 의미하지 않는다.
+- 조리 상태는 저장된 완료 시각을 따르지만 리뷰는 주문 성공 직후부터 가능하다. 프론트는 `status`가 아닌 `canReview`로 작성 버튼을 판단한다. `readyAfterSeconds`를 15로 하드코딩하지 않는다. 이 값은 최초 대기 초이며 매 조회 시 남은 시간을 의미하지 않는다.
 - V5는 기존 주문에 15초 완료 시각을 채우며 삭제하지 않는다. 운영 MariaDB 마이그레이션 적용 검증은 배포 담당자 확인이 필요하다.
+
+### 리뷰 작성 시점 변경 (2026-11-05)
+주문 성공 직후 조리 중에도 리뷰 작성 가능. 영수증의 `canReview`는 리뷰 미작성 여부이며, `cooking`이어도 true다. 주문당 1개 제한, 작성 후 모든 메뉴 행의 `canReview=false`, 중복 요청은 기존 `INVALID_ORDER_STATUS`(400)를 유지한다. 삭제하면 즉시 다시 작성할 수 있다. 조리 중 리뷰 작성/삭제는 저장된 완료 시각이나 대기열을 줄이지 않는다. 상태 `reviewed`는 리뷰 표시이고 조리 완료를 보장하지 않는다.
+
+프론트 인계: 현재 ReceiptDialog와 App.openReview가 `status==='ready'`로 제한하고 있어 `canReview` 기준으로 변경해야 한다. 이번 백엔드 작업에서는 frontend 파일을 수정하지 않았다.

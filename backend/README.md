@@ -62,7 +62,7 @@ JDK 21을 사용한다. macOS에서는 `export JAVA_HOME=$(/usr/libexec/java_hom
 - Catalog: four stores and 16 menus in `market-catalog.json`, with `mock: true`. Fixed waits remain the default; Seomun synthetic ETA is opt-in (see below).
 - 가상 구매: 단일 가게 주문, 메뉴당 수량 1~99. 필수 `Idempotency-Key`로 재시도 중복 차감을 방지한다. 같은 구매 재시도에 같은 키를 보내고, 새로운 구매에는 새 키를 사용한다.
 - 사용자 행 잠금 아래 코인 차감·주문·구매 횟수가 함께 커밋된다. 실패하면 모두 롤백된다. 수량이 아닌 주문 메뉴 행마다 구매 횟수 +1. 장비/배지에 즉시 반영된다.
-- Receipts: legacy orders finish after 15 seconds. With Seomun ETA enabled, readiness follows the persisted predicted completion time. No real food order is placed.
+- Receipts: legacy orders finish after 15 seconds. With Seomun ETA enabled, readiness follows the persisted predicted completion time. Reviews are allowed immediately after purchase; use canReview independently of cooking status. No real food order is placed.
 - 리뷰: 주문 전체에 1개. 별점 1~5, 내용 1~500자, 이미지 URL 최대 5개. 업로드 기능은 없다. 평점/리뷰 수는 저장된 리뷰로 계산한다.
 - 일일 미션: 한국시간 자정 초기화. 당일 서문분식 리뷰 1개 작성 시 200코인, 하루 1회 수령. 동시 수령에도 중복 지급되지 않는다.
 - 가게 3곳 둘러보기: 당일 서로 다른 가게 상세 진입 3곳, 300코인. `POST /api/v1/stores/{storeId}/browse`로 기록한다. 실제 방문 인증이 아니다.

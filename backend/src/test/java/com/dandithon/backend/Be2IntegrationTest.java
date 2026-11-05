@@ -82,8 +82,8 @@ class Be2IntegrationTest {
         var receipts=get("/orders/receipts").path("receipts");assertThat(receipts.size()).isEqualTo(2);
         assertThat(receipts.get(0).path("status").asText()).isEqualTo("cooking");
         assertThat(get("/profile/equipments").path("equipments").get(0).path("unlocked").asBoolean()).isTrue();
-        clock.advance(14);assertThat(get("/orders/receipts").path("receipts").get(0).path("canReview").asBoolean()).isFalse();
-        clock.advance(1);json(request("POST","/reviews",review(order.path("orderId").asText()),null),201);
+        assertThat(get("/orders/receipts").path("receipts").get(0).path("canReview").asBoolean()).isTrue();
+        json(request("POST","/reviews",review(order.path("orderId").asText()),null),201);
         for(var receipt:get("/orders/receipts").path("receipts"))assertThat(receipt.path("status").asText()).isEqualTo("reviewed");
         assertThat(count("game_reviews")).isEqualTo(1);
     }
@@ -122,10 +122,9 @@ class Be2IntegrationTest {
         }
         assertThat(balance()).isEqualTo(100);assertThat(count("purchase_events")).isEqualTo(3);
     }
-    @Test void reviewRequiresReadyOrderValidInputAndCannotBeDuplicated()throws Exception {
+    @Test void reviewIsImmediateWithValidInputAndCannotBeDuplicated()throws Exception {
         String id=buy("review").path("orderId").asText();
-        assertThat(json(request("POST","/reviews",review(id),null),400).path("error").path("code").asText()).isEqualTo("INVALID_ORDER_STATUS");
-        clock.advance(15);
+        assertThat(get("/orders/receipts").path("receipts").get(0).path("canReview").asBoolean()).isTrue();
         for(String bad:List.of(review(id).replace(":5",":0"),review(id).replace(" 맛있어요 "," "),review(id).replace("/assets/review.png","javascript:alert(1)")))json(request("POST","/reviews",bad,null),400);
         assertThat(count("game_reviews")).isZero();
         json(request("POST","/reviews",review(id),null),201);json(request("POST","/reviews",review(id),null),400);

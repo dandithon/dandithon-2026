@@ -92,9 +92,17 @@ class SeomunEtaIntegrationTest {
         assertThat(summary.path("waitTimeSource").asText()).isEqualTo("SYNTHETIC_MODEL");
         assertThat(summary.path("npcCount").asInt()).isEqualTo(SeomunEtaService.npcCount(seconds*2/5.0));
         String review=mapper.writeValueAsString(Map.of("orderId",first.path("orderId").asText(),"rating",5,"text","시연 리뷰"));
+        var saved=data("POST","/reviews",review,null,201);
+        assertThat(queue().path("activeOrders").asInt()).isEqualTo(2);
         data("POST","/reviews",review,null,400);
-        clock.advance(seconds);assertThat(queue().path("activeOrders").asInt()).isEqualTo(1);
+        var rows=data("GET","/orders/receipts",null,null,200).path("receipts");
+        for(var row:rows)if(row.path("orderId").asText().equals(first.path("orderId").asText()))assertThat(row.path("canReview").asBoolean()).isFalse();
+        data("DELETE","/reviews/"+saved.path("reviewId").asText(),null,null,200);
+        rows=data("GET","/orders/receipts",null,null,200).path("receipts");
+        for(var row:rows)if(row.path("orderId").asText().equals(first.path("orderId").asText()))assertThat(row.path("canReview").asBoolean()).isTrue();
         data("POST","/reviews",review,null,201);
+        clock.advance(seconds);assertThat(queue().path("activeOrders").asInt()).isEqualTo(1);
+        data("POST","/reviews",review,null,400);
         clock.advance(seconds);assertThat(queue().path("activeOrders").asInt()).isZero();
         assertThat(queue().path("npcCount").asInt()).isZero();
         // Persisted deadlines are authoritative, independent of a new model invocation.

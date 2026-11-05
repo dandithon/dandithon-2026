@@ -85,7 +85,7 @@ public class MarketService {
     }
     public List<Receipt> receipts() {
         LocalDateTime time=now();
-        return orders.findByUserIdOrderByOrderedAtDescIdDesc(1).stream().flatMap(o->o.lines.stream().map(l->new Receipt(o.id,o.storeId,o.storeName,l.menuId,l.menuName,l.quantity,o.status(time),"ready".equals(o.status(time)),o.orderedAt))).toList();
+        return orders.findByUserIdOrderByOrderedAtDescIdDesc(1).stream().flatMap(o->o.lines.stream().map(l->new Receipt(o.id,o.storeId,o.storeName,l.menuId,l.menuName,l.quantity,o.status(time),!o.reviewed,o.orderedAt))).toList();
     }
     public List<ReviewView> reviews(String storeId) {
         catalog.store(storeId);
@@ -105,7 +105,7 @@ public class MarketService {
         }
         var user=lockedUser();
         var order=orders.findById(request.orderId()).filter(o->o.userId==1).orElseThrow(()->new ApiException("ORDER_NOT_FOUND","주문을 찾을 수 없어요.",HttpStatus.NOT_FOUND));
-        if(!"ready".equals(order.status(now())))throw new ApiException("INVALID_ORDER_STATUS","조리 완료 주문에 리뷰를 한 번만 작성할 수 있어요.",HttpStatus.BAD_REQUEST);
+        if(order.reviewed)throw new ApiException("INVALID_ORDER_STATUS","리뷰는 주문당 한 번만 작성할 수 있어요.",HttpStatus.BAD_REQUEST);
         var review=new GameReview(order,user.getNickname(),request.rating(),text,images,now());
         reviews.save(review);order.reviewed=true;
         return new ReviewResult(review.id,order.id,review.rating,review.text,review.authorName,date(review.createdAt));
