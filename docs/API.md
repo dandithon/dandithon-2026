@@ -99,6 +99,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | 영수증 목록 조회 | `GET` | `/api/v1/orders/receipts` | 내 영수증 및 조리 상태 확인 |
 | 가게 리뷰 목록 | `GET` | `/api/v1/stores/{storeId}/reviews` | 가게별 작성된 리뷰 조회 |
 | 리뷰 작성 | `POST` | `/api/v1/reviews` | 조리 완료 주문 건 리뷰 작성 |
+| 리뷰 삭제 | `DELETE` | `/api/v1/reviews/{reviewId}` | 작성한 리뷰 삭제 및 주문 상태 복구 |
 | 가게 둘러보기 기록 | `POST` | `/api/v1/stores/{storeId}/browse` | 가게 상세 진입 시 당일 고유 가게 집계 |
 | 퀘스트 목록 조회 | `GET` | `/api/v1/quests` | 일일 미션/퀘스트/이벤트 목록 |
 | 퀘스트 보상 수령 | `POST` | `/api/v1/quests/{questId}/claim` | 완료된 퀘스트 코인 수령 |
@@ -705,6 +706,29 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
   "error": null
 }
 ```
+
+---
+
+### 4.12-2 작성한 리뷰 삭제
+- **Method**: `DELETE`
+- **Endpoint**: `/api/v1/reviews/{reviewId}`
+- **설명**: 본인이 작성했던 리뷰를 삭제합니다. 리뷰가 삭제되면 연관된 주문의 `reviewed` 상태가 `false`(`ready`)로 되돌아가, 필요 시 재작성할 수 있습니다.
+- **Path Variable**:
+  - `reviewId` (String): 리뷰 식별자
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "reviewId": "rev-new-001",
+    "deleted": true
+  },
+  "error": null
+}
+```
+- **오류 응답**:
+  - `404 Not Found`: 존재하지 않는 리뷰 ID (`REVIEW_NOT_FOUND`)
+  - `403 Forbidden`: 타인이 작성한 리뷰를 삭제하려 할 경우 (`FORBIDDEN`)
 
 ---
 

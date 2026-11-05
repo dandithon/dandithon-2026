@@ -148,4 +148,30 @@ class Be2IntegrationTest {
         json(request("POST","/quests/unknown/claim",null,null),400);
         assertThat(balance()).isEqualTo(1000);assertThat(count("quest_claims")).isZero();
     }
+    @Test void reviewCanBeDeletedAndRestoresOrderStatus()throws Exception {
+        String id=buy("delete-test").path("orderId").asText();
+        clock.advance(15);
+        var created = json(request("POST","/reviews",review(id),null),201).path("data");
+        String reviewId = created.path("reviewId").asText();
+        assertThat(count("game_reviews")).isEqualTo(1);
+
+        var receipts1 = get("/orders/receipts").path("receipts");
+        var ord1 = receipts1.get(0);
+        assertThat(ord1.path("status").asText()).isEqualTo("reviewed");
+
+        var del = json(request("DELETE","/reviews/"+reviewId,null,null),200).path("data");
+        assertThat(del.path("deleted").asBoolean()).isTrue();
+        assertThat(del.path("reviewId").asText()).isEqualTo(reviewId);
+        assertThat(count("game_reviews")).isZero();
+
+        var receipts2 = get("/orders/receipts").path("receipts");
+        var ord2 = receipts2.get(0);
+        assertThat(ord2.path("status").asText()).isEqualTo("ready");
+
+        json(request("POST","/reviews",review(id),null),201);
+        assertThat(count("game_reviews")).isEqualTo(1);
+
+        var err = json(request("DELETE","/reviews/non-existent-review",null,null),404);
+        assertThat(err.path("error").path("code").asText()).isEqualTo("REVIEW_NOT_FOUND");
+    }
 }

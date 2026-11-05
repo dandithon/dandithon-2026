@@ -104,6 +104,23 @@ public class MarketService {
         reviews.save(review);order.reviewed=true;
         return new ReviewResult(review.id,order.id,review.rating,review.text,review.authorName,date(review.createdAt));
     }
+    public record ReviewDeleteResult(String reviewId, boolean deleted) {}
+    @Transactional
+    public ReviewDeleteResult deleteReview(String reviewId) {
+        if (reviewId == null || reviewId.isBlank()) {
+            throw ApiException.invalid("리뷰를 확인해 주세요.");
+        }
+        var review = reviews.findById(reviewId)
+            .orElseThrow(() -> new ApiException("REVIEW_NOT_FOUND", "리뷰를 찾을 수 없어요.", HttpStatus.NOT_FOUND));
+        if (review.userId != 1L) {
+            throw new ApiException("FORBIDDEN", "본인이 작성한 리뷰만 삭제할 수 있어요.", HttpStatus.FORBIDDEN);
+        }
+        if (review.orderId != null) {
+            orders.findById(review.orderId).ifPresent(order -> order.reviewed = false);
+        }
+        reviews.delete(review);
+        return new ReviewDeleteResult(reviewId, true);
+    }
     GuestUser lockedUser() {return users.findForUpdate(1).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));}
     LocalDateTime now() {return LocalDateTime.now(clock.withZone(ZoneId.of("Asia/Seoul")));}
     private String date(LocalDateTime time) {return time.format(DateTimeFormatter.ofPattern("yyyy. MM. dd"));}
