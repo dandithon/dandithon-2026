@@ -15,13 +15,17 @@
 
 ## Vercel 설정
 
-### GitHub 자동 배포 설정 진행 상태
+### GitHub 자동 배포 연결 (2026-11-05)
 
-2026-11-04 GitHub 로그인 `Wooong-E` 연결을 확인했다. Vercel 프로젝트의 Root Directory는 `frontend`, Node.js는 `22.x`로 설정했고 Production·Preview 환경에 `VITE_DATA_MODE=mock`을 저장했다.
+저장소가 Public으로 전환된 뒤 Vercel GitHub 연결이 성공했다. 연결 저장소는 `dandithon/dandithon-2026`, Production Branch는 `main`이다. GitHub Actions workflow 대신 Vercel 기본 Git 연동을 사용한다.
 
-저장소 Git 연결은 아직 실패하며 프로젝트 `link`는 비어 있다. GitHub API 기준 저장소는 private이며 현재 계정은 push 권한은 있지만 admin 권한은 없다. 조직 관리자가 Vercel GitHub App에 `dandithon/dandithon-2026` 접근을 허용했는지 확인해야 한다. 로그인 연결만으로 조직 저장소 접근까지 보장되지는 않는다. 저장소 연결 후 Production Branch `main`을 확인하고 실제 push/PR로 자동 배포를 검증한다. 현재 자동 배포 완료로 간주하지 않는다.
+- `main` 변경: 테스트·빌드 성공 후 운영 도메인 https://ifyougotothemarket.vercel.app 에 반영.
+- 기능 브랜치 push·PR: 별도 Preview 배포. 운영 화면과 분리.
+- Root Directory `frontend`, Node.js `22.x`, 설치 `npm ci`, 빌드 `npm run verify`, 출력 `dist`.
+- Production은 `VITE_DATA_MODE=live`와 Cloudtype `/api/v1` 주소를 사용한다. Preview는 `VITE_DATA_MODE=mock`으로 별도 검수한다.
+- 기존 비공개 조직 저장소의 Hobby 제한은 Public 전환으로 이번 연결에서 해소됐다. 공개 전 검토 결과는 `docs/PUBLICATION_REVIEW.md` 참고.
 
-후속 확인: 관리자의 앱 접근 허용 이후 연결을 재시도했으나, Vercel은 비공개 조직 저장소의 Hobby 플랜 연결을 HTTP 409로 거절했다. 현재 확인된 차단 사유는 요금제 제한이다. Pro 전환 또는 팀의 저장소 공개 여부 결정 후 연결을 재검증해야 한다. 유료 전환·공개 전환은 수행하지 않았다.
+주의: 수동 배포한 버튼·창 전환 효과는 아직 main에 병합되지 않았다. 다음 main 배포는 main의 코드를 그대로 반영하므로 해당 효과를 유지하려면 효과 커밋을 별도 PR로 병합해야 한다. 롤백한 책 페이지 넘김 효과는 반영하지 않는다.
 
 ### 모바일 너비 대응 수정 및 재배포 대기
 
