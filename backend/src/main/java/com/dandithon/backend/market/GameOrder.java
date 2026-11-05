@@ -16,6 +16,9 @@ public class GameOrder {
     @Column(name="remaining_balance",nullable=false) long remainingBalance;
     @Column(name="ordered_at",nullable=false) LocalDateTime orderedAt;
     @Column(nullable=false) boolean reviewed;
+    @Column(name="ready_at") LocalDateTime readyAt;
+    @Column(name="eta_model_version",length=80) String etaModelVersion;
+    @Column(name="eta_seconds_per_minute") Integer etaSecondsPerMinute;
     @ElementCollection @CollectionTable(name="order_lines",joinColumns=@JoinColumn(name="order_id"))
     @OrderColumn(name="line_number") List<Line> lines=new ArrayList<>();
     @Embeddable public static class Line {
@@ -29,7 +32,7 @@ public class GameOrder {
     protected GameOrder() {}
     GameOrder(String id,MarketCatalog.Store store,String key,String signature,long total,long balance,LocalDateTime now,List<Line> lines) {
         this.id=id;userId=1;storeId=store.id();storeName=store.name();requestKey=key;requestSignature=signature;
-        totalPrice=total;remainingBalance=balance;orderedAt=now;this.lines.addAll(lines);
+        totalPrice=total;remainingBalance=balance;orderedAt=now;readyAt=now;etaSecondsPerMinute=60;this.lines.addAll(lines);
     }
-    String status(LocalDateTime now) {return reviewed?"reviewed":now.isBefore(orderedAt.plusSeconds(15))?"cooking":"ready";}
+    String status(LocalDateTime now) {return reviewed?"reviewed":now.isBefore(readyAt==null?orderedAt.plusSeconds(15):readyAt)?"cooking":"ready";}
 }

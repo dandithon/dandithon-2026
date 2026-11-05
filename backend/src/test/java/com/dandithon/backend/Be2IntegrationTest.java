@@ -54,6 +54,12 @@ class Be2IntegrationTest {
     String review(String order){return mapper.writeValueAsString(Map.of("orderId",order,"rating",5,"text"," 맛있어요 ","imageUrls",List.of("/assets/review.png")));}
     long balance(){return jdbc.queryForObject("select balance from app_users where id=1",Long.class);}
     long count(String table){return jdbc.queryForObject("select count(*) from "+table,Long.class);}
+    @Test void etaPreviewIsSeparateFromInstantPriorityOrders()throws Exception {
+        var quote=json(request("POST","/stores/seomun/eta","{\"items\":[{\"menuId\":\"fried\",\"quantity\":2}]}",null),200).path("data");
+        assertThat(quote.path("appliedToOrders").asBoolean()).isFalse();
+        assertThat(quote.path("synthetic").asBoolean()).isTrue();
+        assertThat(buy("legacy-eta-disabled").path("readyAfterSeconds").asInt()).isZero();
+    }
     @Test void catalogMatchesProfileAndUsesExplicitMockCrowding()throws Exception {
         var list=get("/stores").path("stores");assertThat(list.size()).isEqualTo(4);
         assertThat(list.get(0).path("crowdLevel").asText()).isEqualTo("NORMAL");
@@ -74,10 +80,10 @@ class Be2IntegrationTest {
         assertThat(count("purchase_events")).isEqualTo(2);
         assertThat(jdbc.queryForObject("select purchase_count from food_progress where food_id='tteok'",Long.class)).isEqualTo(1);
         var receipts=get("/orders/receipts").path("receipts");assertThat(receipts.size()).isEqualTo(2);
-        assertThat(receipts.get(0).path("status").asText()).isEqualTo("cooking");
+        assertThat(receipts.get(0).path("status").asText()).isEqualTo("ready");
         assertThat(get("/profile/equipments").path("equipments").get(0).path("unlocked").asBoolean()).isTrue();
-        clock.advance(14);assertThat(get("/orders/receipts").path("receipts").get(0).path("canReview").asBoolean()).isFalse();
-        clock.advance(1);json(request("POST","/reviews",review(order.path("orderId").asText()),null),201);
+        assertThat(get("/orders/receipts").path("receipts").get(0).path("canReview").asBoolean()).isTrue();
+        json(request("POST","/reviews",review(order.path("orderId").asText()),null),201);
         for(var receipt:get("/orders/receipts").path("receipts"))assertThat(receipt.path("status").asText()).isEqualTo("reviewed");
         assertThat(count("game_reviews")).isEqualTo(1);
     }
@@ -116,10 +122,9 @@ class Be2IntegrationTest {
         }
         assertThat(balance()).isEqualTo(100);assertThat(count("purchase_events")).isEqualTo(3);
     }
-    @Test void reviewRequiresReadyOrderValidInputAndCannotBeDuplicated()throws Exception {
+    @Test void reviewIsImmediateWithValidInputAndCannotBeDuplicated()throws Exception {
         String id=buy("review").path("orderId").asText();
-        assertThat(json(request("POST","/reviews",review(id),null),400).path("error").path("code").asText()).isEqualTo("INVALID_ORDER_STATUS");
-        clock.advance(15);
+        assertThat(get("/orders/receipts").path("receipts").get(0).path("canReview").asBoolean()).isTrue();
         for(String bad:List.of(review(id).replace(":5",":0"),review(id).replace(" 맛있어요 "," "),review(id).replace("/assets/review.png","javascript:alert(1)")))json(request("POST","/reviews",bad,null),400);
         assertThat(count("game_reviews")).isZero();
         json(request("POST","/reviews",review(id),null),201);json(request("POST","/reviews",review(id),null),400);

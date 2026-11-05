@@ -19,8 +19,9 @@ public class MarketService {
     private final UserRepository users;
     private final PurchaseProgressService progress;
     private final Clock clock;
-    public MarketService(MarketCatalog catalog,OrderRepository orders,ReviewRepository reviews,UserRepository users,PurchaseProgressService progress,Clock clock) {
-        this.catalog=catalog;this.orders=orders;this.reviews=reviews;this.users=users;this.progress=progress;this.clock=clock;
+    private final SeomunEtaService eta;
+    public MarketService(MarketCatalog catalog,OrderRepository orders,ReviewRepository reviews,UserRepository users,PurchaseProgressService progress,Clock clock,SeomunEtaService eta) {
+        this.catalog=catalog;this.orders=orders;this.reviews=reviews;this.users=users;this.progress=progress;this.clock=clock;this.eta=eta;
     }
     public record ItemRequest(String menuId,Integer quantity) {}
     public record OrderRequest(String storeId,List<ItemRequest> items) {}
@@ -30,15 +31,17 @@ public class MarketService {
     public record Receipt(String orderId,String storeId,String storeName,String menuId,String menuName,int quantity,String status,boolean canReview,LocalDateTime orderedAt) {}
     public record ReviewView(String id,String authorName,int rating,String text,String date,boolean photos,List<String> imageUrls) {}
     public record ReviewResult(String reviewId,String orderId,int rating,String text,String authorName,String date) {}
-    public record StoreSummary(String id,String name,String category,int waitTimeMinutes,String crowdLevel,String crowdLabel,int npcCount,List<String> tags,boolean mock) {}
+    public record StoreSummary(String id,String name,String category,int waitTimeMinutes,String crowdLevel,String crowdLabel,int npcCount,List<String> tags,boolean mock,String waitTimeSource,String modelVersion,boolean synthetic,Integer secondsPerSimulatedMinute) {}
     public record StoreDetail(String id,String name,String category,String description,String greeting,double rating,int reviewCount,List<String> tags,List<MarketCatalog.Menu> menus,boolean mock) {}
     public static String crowd(int minutes) {return minutes<5?"CALM":minutes<10?"NORMAL":minutes<20?"CROWDED":"VERY_CROWDED";}
     public List<StoreSummary> stores() {
         return catalog.stores().stream().map(s->{
-            String level=crowd(s.waitTimeMinutes());
+            var queue=eta.enabled()&&"seomun".equals(s.id())?eta.queue(s.id()):null;
+            int minutes=queue==null?s.waitTimeMinutes():(int)Math.ceil(queue.waitTimeMinutes());
+            String level=crowd(minutes);
             String label=switch(level){case "CALM"->"여유";case "NORMAL"->"보통";case "CROWDED"->"혼잡";default->"매우 혼잡";};
             int npcs=switch(level){case "CALM"->2;case "NORMAL"->4;case "CROWDED"->7;default->10;};
-            return new StoreSummary(s.id(),s.name(),s.category(),s.waitTimeMinutes(),level,label,npcs,s.tags(),true);
+            return new StoreSummary(s.id(),s.name(),s.category(),minutes,level,label,queue==null?npcs:queue.npcCount(),s.tags(),true,queue==null?"STATIC_DEMO":"SYNTHETIC_DEMO_QUEUE",queue==null?null:queue.modelVersion(),queue!=null,queue==null?null:queue.secondsPerSimulatedMinute());
         }).toList();
     }
     public StoreDetail store(String id) {
@@ -66,20 +69,21 @@ public class MarketService {
         }
         var lines=quantities.entrySet().stream().map(e->new GameOrder.Line(catalog.menu(store,e.getKey()),e.getValue())).toList();
         long total=lines.stream().mapToLong(l->l.price*l.quantity).sum();
+        var orderedAt=now();
         user.spend(total);
         user.gainExp(Math.max(10L, total / 10L));
-        var order=new GameOrder("ord-"+UUID.randomUUID(),store,key,signature,total,user.getBalance(),now(),lines);
+        var order=new GameOrder("ord-"+UUID.randomUUID(),store,key,signature,total,user.getBalance(),orderedAt,lines);
         orders.save(order);
         for(var line:lines)progress.recordSuccessfulPurchase(1,order.id+":"+line.menuId,line.menuId);
         return orderResult(order);
     }
     private OrderResult orderResult(GameOrder order) {
-        return new OrderResult(order.id,order.storeId,order.totalPrice,order.remainingBalance,order.status(now()),15,
+        return new OrderResult(order.id,order.storeId,order.totalPrice,order.remainingBalance,order.status(now()),Math.toIntExact(Duration.between(order.orderedAt,order.readyAt==null?order.orderedAt.plusSeconds(15):order.readyAt).toSeconds()),
             order.lines.stream().map(l->new OrderItem(l.menuId,l.menuName,l.quantity,l.price)).toList());
     }
     public List<Receipt> receipts() {
         LocalDateTime time=now();
-        return orders.findByUserIdOrderByOrderedAtDescIdDesc(1).stream().flatMap(o->o.lines.stream().map(l->new Receipt(o.id,o.storeId,o.storeName,l.menuId,l.menuName,l.quantity,o.status(time),"ready".equals(o.status(time)),o.orderedAt))).toList();
+        return orders.findByUserIdOrderByOrderedAtDescIdDesc(1).stream().flatMap(o->o.lines.stream().map(l->new Receipt(o.id,o.storeId,o.storeName,l.menuId,l.menuName,l.quantity,o.status(time),!o.reviewed,o.orderedAt))).toList();
     }
     public List<ReviewView> reviews(String storeId) {
         catalog.store(storeId);
@@ -99,7 +103,7 @@ public class MarketService {
         }
         var user=lockedUser();
         var order=orders.findById(request.orderId()).filter(o->o.userId==1).orElseThrow(()->new ApiException("ORDER_NOT_FOUND","주문을 찾을 수 없어요.",HttpStatus.NOT_FOUND));
-        if(!"ready".equals(order.status(now())))throw new ApiException("INVALID_ORDER_STATUS","조리 완료 주문에 리뷰를 한 번만 작성할 수 있어요.",HttpStatus.BAD_REQUEST);
+        if(order.reviewed)throw new ApiException("INVALID_ORDER_STATUS","리뷰는 주문당 한 번만 작성할 수 있어요.",HttpStatus.BAD_REQUEST);
         var review=new GameReview(order,user.getNickname(),request.rating(),text,images,now());
         reviews.save(review);order.reviewed=true;
         return new ReviewResult(review.id,order.id,review.rating,review.text,review.authorName,date(review.createdAt));

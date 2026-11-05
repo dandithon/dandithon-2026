@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service @Transactional(readOnly=true)
 public class ProfileService {
     private final UserRepository users;
+    private final com.dandithon.backend.market.SeomunEtaService eta;
     private final FoodProgressRepository progress;
     private final DailyActivityService activities;
     private final com.dandithon.backend.market.DailyActivityRepository dailyActivities;
@@ -21,8 +22,8 @@ public class ProfileService {
     private final ReviewRepository reviews;
     private final QuestClaimRepository claims;
     private final com.dandithon.backend.market.MarketCatalog catalog;
-    public ProfileService(UserRepository users,FoodProgressRepository progress,DailyActivityService activities,com.dandithon.backend.market.DailyActivityRepository dailyActivities,PurchaseEventRepository events,OrderRepository orders,ReviewRepository reviews,QuestClaimRepository claims,com.dandithon.backend.market.MarketCatalog catalog) {
-        this.users=users;this.progress=progress;this.activities=activities;this.dailyActivities=dailyActivities;this.events=events;this.orders=orders;this.reviews=reviews;this.claims=claims;this.catalog=catalog;
+    public ProfileService(UserRepository users,FoodProgressRepository progress,DailyActivityService activities,com.dandithon.backend.market.DailyActivityRepository dailyActivities,PurchaseEventRepository events,OrderRepository orders,ReviewRepository reviews,QuestClaimRepository claims,com.dandithon.backend.market.MarketCatalog catalog,com.dandithon.backend.market.SeomunEtaService eta) {
+        this.users=users;this.progress=progress;this.activities=activities;this.dailyActivities=dailyActivities;this.events=events;this.orders=orders;this.reviews=reviews;this.claims=claims;this.catalog=catalog;this.eta=eta;
     }
     private GuestUser user(boolean write) {
         return (write?users.findForUpdate(1):users.findById(1L)).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));
@@ -71,6 +72,7 @@ public class ProfileService {
         progress.deleteAll();
         claims.deleteAll();
         dailyActivities.deleteAll();
+        eta.clear();
         return me();
     }
     public record NicknameView(String nickname) {}
