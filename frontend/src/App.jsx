@@ -174,7 +174,7 @@ export default function App(){
           {modal&&<div key={modal} data-modal={modal} inert={closing?true:undefined} className={`modal-motion absolute inset-0 z-30 ${closing?'is-closing':''}`}>
           {modal==='coins'&&<CoinDialog balance={state.balance} busy={busy} live={live} onClose={close} onCharge={updateCoins} onCheckBalance={()=>updateCoins()} onReset={resetDemo} onReload={reloadAll}/>}
           {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={equip} onDeleteReview={deleteReview} onRefreshReviews={refreshReviews} onOpenFavorite={openFavorite} onRefreshFavorites={refreshFavorites} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
-          {modal==='map'&&<FullMapDialog onClose={close}/>}
+          {modal==='map'&&<FullMapDialog zones={state.zones} notify={notify} onClose={close} onReturn={()=>{close();setPage('market');setLocationPreview(null);setToast('');}}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
           {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
