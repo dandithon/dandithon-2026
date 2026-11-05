@@ -1,8 +1,8 @@
 import React from 'react';
 import PlayerCharacter from './PlayerCharacter';
-export default function MapArtwork({ assets, nickname = '승우', equipped = {}, balance = 1000, joystick = true, position = {x:0,y:0}, direction = 'up', moving = false, overlay = false, layer = 'hud', camera = {zoom:1,x:0,y:0}, stick = {x:0,y:0}, children }) {
+function MapArtwork({ assets, nickname = '승우', equipped = {}, balance = 1000, joystick = true, position = {x:0,y:0}, direction = 'up', moving = false, overlay = false, layer = 'hud', camera = {zoom:1,x:0,y:0}, stick = {x:0,y:0}, children }) {
   const { imgImage7, imgImage5, imgImage11, imgImage12, imgImage13, imgImage15, imgImage16, imgImage4, imgImage87, imgImage20 } = assets;
-  if(layer==='world')return <div className="absolute inset-0 origin-top-left" style={{transform:`translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`}}>
+  if(layer==='world')return <div className="map-world absolute inset-0 origin-top-left" style={{transform:`translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`}}>
       <div className="absolute h-[875px] left-0 top-[-1px] w-[405px]" data-node-id="40:42" data-name="image 7">
         <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage7} />
       </div>
@@ -80,3 +80,4 @@ export default function MapArtwork({ assets, nickname = '승우', equipped = {},
     </div>
   );
 }
+export default React.memo(MapArtwork);

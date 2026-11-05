@@ -5,7 +5,7 @@ export default function QuestDialog({state,onClose,onClaim,notify,busy,onRefresh
   const [tab,setTab]=useState('daily');
   const group=tab==='quest'?'achievement':tab;
   const tasks=(state.quests?.[group]||[]).map(q=>({...q,progress:q.current,max:q.target,reward:q.rewardCoin}));
-  return <Dialog label="퀘스트" onClose={onClose}>
+  return <Dialog label="퀘스트" onClose={onClose} panelBounds={{left:20,top:210,width:360,height:432}}>
     <div className="pointer-events-none absolute left-0 top-[105px]"><Art screen="125:1213" name="imgImage65" width={401} height={602} crop={{height:'76.87%',width:'93.99%',left:'3.02%',top:'15.78%'}}/></div>
     <div className="absolute left-[298px] top-[229px]"><ArtButton screen="125:1213" name="imgImage51" width={40} height={39} label="퀘스트 닫기" onClick={onClose}/></div>
     <nav aria-label="퀘스트 종류" className="absolute left-[1px] top-[246px] z-10 flex flex-col gap-[4px]">
