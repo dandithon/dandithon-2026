@@ -54,6 +54,12 @@ class Be2IntegrationTest {
     String review(String order){return mapper.writeValueAsString(Map.of("orderId",order,"rating",5,"text"," 맛있어요 ","imageUrls",List.of("/assets/review.png")));}
     long balance(){return jdbc.queryForObject("select balance from app_users where id=1",Long.class);}
     long count(String table){return jdbc.queryForObject("select count(*) from "+table,Long.class);}
+    @Test void etaPreviewIsAvailableButActivationDefaultsToLegacyOrderTiming()throws Exception {
+        var quote=json(request("POST","/stores/seomun/eta","{\"items\":[{\"menuId\":\"fried\",\"quantity\":2}]}",null),200).path("data");
+        assertThat(quote.path("appliedToOrders").asBoolean()).isFalse();
+        assertThat(quote.path("synthetic").asBoolean()).isTrue();
+        assertThat(buy("legacy-eta-disabled").path("readyAfterSeconds").asInt()).isEqualTo(15);
+    }
     @Test void catalogMatchesProfileAndUsesExplicitMockCrowding()throws Exception {
         var list=get("/stores").path("stores");assertThat(list.size()).isEqualTo(4);
         assertThat(list.get(0).path("crowdLevel").asText()).isEqualTo("NORMAL");

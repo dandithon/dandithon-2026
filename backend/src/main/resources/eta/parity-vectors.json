@@ -1,0 +1,218 @@
+[
+  {
+    "quantities": {
+      "tteok": 5,
+      "sundae": 0,
+      "fried": 3,
+      "fish": 0
+    },
+    "expectedMinutes": 8.034261258019988
+  },
+  {
+    "quantities": {
+      "tteok": 5,
+      "sundae": 3,
+      "fried": 2,
+      "fish": 4
+    },
+    "expectedMinutes": 4.030488888856677
+  },
+  {
+    "quantities": {
+      "tteok": 4,
+      "sundae": 3,
+      "fried": 1,
+      "fish": 1
+    },
+    "expectedMinutes": 4.046771102800655
+  },
+  {
+    "quantities": {
+      "tteok": 1,
+      "sundae": 0,
+      "fried": 0,
+      "fish": 4
+    },
+    "expectedMinutes": 1.8766898189909675
+  },
+  {
+    "quantities": {
+      "tteok": 0,
+      "sundae": 5,
+      "fried": 2,
+      "fish": 1
+    },
+    "expectedMinutes": 5.046018926448006
+  },
+  {
+    "quantities": {
+      "tteok": 4,
+      "sundae": 1,
+      "fried": 0,
+      "fish": 0
+    },
+    "expectedMinutes": 2.0982886864312413
+  },
+  {
+    "quantities": {
+      "tteok": 0,
+      "sundae": 4,
+      "fried": 3,
+      "fish": 1
+    },
+    "expectedMinutes": 8.057833416188654
+  },
+  {
+    "quantities": {
+      "tteok": 2,
+      "sundae": 3,
+      "fried": 5,
+      "fish": 0
+    },
+    "expectedMinutes": 12.100681200391
+  },
+  {
+    "quantities": {
+      "tteok": 3,
+      "sundae": 5,
+      "fried": 4,
+      "fish": 3
+    },
+    "expectedMinutes": 8.051995900427658
+  },
+  {
+    "quantities": {
+      "tteok": 3,
+      "sundae": 3,
+      "fried": 4,
+      "fish": 3
+    },
+    "expectedMinutes": 8.041512701541938
+  },
+  {
+    "quantities": {
+      "tteok": 4,
+      "sundae": 5,
+      "fried": 5,
+      "fish": 0
+    },
+    "expectedMinutes": 12.100681200391
+  },
+  {
+    "quantities": {
+      "tteok": 4,
+      "sundae": 0,
+      "fried": 3,
+      "fish": 2
+    },
+    "expectedMinutes": 8.038771858567516
+  },
+  {
+    "quantities": {
+      "tteok": 0,
+      "sundae": 4,
+      "fried": 0,
+      "fish": 0
+    },
+    "expectedMinutes": 5.038749947438667
+  },
+  {
+    "quantities": {
+      "tteok": 0,
+      "sundae": 0,
+      "fried": 4,
+      "fish": 0
+    },
+    "expectedMinutes": 8.035066781557452
+  },
+  {
+    "quantities": {
+      "tteok": 1,
+      "sundae": 4,
+      "fried": 0,
+      "fish": 0
+    },
+    "expectedMinutes": 5.037228151639792
+  },
+  {
+    "quantities": {
+      "tteok": 0,
+      "sundae": 2,
+      "fried": 0,
+      "fish": 0
+    },
+    "expectedMinutes": 2.0982886864312413
+  },
+  {
+    "quantities": {
+      "tteok": 0,
+      "sundae": 2,
+      "fried": 0,
+      "fish": 3
+    },
+    "expectedMinutes": 2.0982886864312413
+  },
+  {
+    "quantities": {
+      "tteok": 3,
+      "sundae": 1,
+      "fried": 5,
+      "fish": 0
+    },
+    "expectedMinutes": 12.09284488161377
+  },
+  {
+    "quantities": {
+      "tteok": 4,
+      "sundae": 4,
+      "fried": 5,
+      "fish": 4
+    },
+    "expectedMinutes": 12.19955183864952
+  },
+  {
+    "quantities": {
+      "tteok": 2,
+      "sundae": 0,
+      "fried": 5,
+      "fish": 5
+    },
+    "expectedMinutes": 12.222346674708014
+  },
+  {
+    "quantities": {
+      "tteok": 46,
+      "sundae": 14,
+      "fried": 0,
+      "fish": 0
+    },
+    "expectedMinutes": 24.88737706114103
+  },
+  {
+    "quantities": {
+      "tteok": 1,
+      "sundae": 4,
+      "fried": 0,
+      "fish": 5
+    },
+    "expectedMinutes": 5.0318411558362
+  },
+  {
+    "quantities": {
+      "tteok": 5,
+      "sundae": 4,
+      "fried": 5,
+      "fish": 1
+    },
+    "expectedMinutes": 12.100856254242348
+  },
+  {
+    "quantities": {
+      "tteok": 4,
+      "sundae": 1,
+      "fried": 4,
+      "fish": 5
+    },
+    "expectedMinutes": 8.041681850900337
+  }
+]

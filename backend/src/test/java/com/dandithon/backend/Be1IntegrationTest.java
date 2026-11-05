@@ -139,7 +139,7 @@ class Be1IntegrationTest {
     @Test void zonesAndSwaggerExposeAllOperations() throws Exception {
         assertThat(get("/map/zones").path("zones").size()).isEqualTo(4);
         var api=json(request("GET","/v3/api-docs",null),200);
-        assertThat(api.path("paths").size()).isEqualTo(21);
+        assertThat(api.path("paths").size()).isEqualTo(22);
         json(request("GET","/api/v1/no-such-route",null),404);
         var ui=request("GET","/swagger-ui/index.html",null);
         assertThat(ui.statusCode()).isEqualTo(200);

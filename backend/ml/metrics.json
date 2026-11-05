@@ -1,0 +1,15 @@
+{
+  "training_rows": 4000,
+  "test_rows": 1000,
+  "training_days": 80,
+  "test_days": 20,
+  "prep_mae_minutes": 1.2647490322386366,
+  "baseline_mean_prep_mae_minutes": 17.371161969365755,
+  "prep_r2": 0.990523935185884,
+  "total_eta_mae_minutes": 1.2647490322386357,
+  "data_source": "SYNTHETIC",
+  "evaluation": "held-out simulated days; not real-store accuracy",
+  "dataset_sha256": "42f6135ea91cd98be08fc2253adee5f757b68085c2e7386583fef087c93e4dfd",
+  "sklearn_version": "1.6.1",
+  "export_max_absolute_difference": 0.0
+}

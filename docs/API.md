@@ -822,3 +822,69 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 - 백엔드 V3 마이그레이션과 browse API를 먼저 배포한 뒤 프론트를 배포한다. 구 버전 서버는 이 경로가 없으므로 새 프론트의 가게 진입이 실패한다.
 
 시연 초기화(`POST /api/v1/demo/reset`) 시 `daily_activities`의 가게 둘러보기·모자 착용 기록도 삭제한다. 기존 주문·리뷰·수령 내역과 함께 초기화하므로 당일 미션은 진행도 0으로 돌아가며, 새 행동으로 다시 완료할 수 있다.
+
+## 서문분식 합성 데이터 기반 AI 준비시간 (2026-11-05)
+
+대상은 서문분식(`seomun`)의 떡볶이·순대·튀김 세트·오뎅만이다. 자체 합성 데이터 5,000건으로 학습한 Random Forest이며 **실제 매장 대기시간 정보가 아니다.** 모델/가정/평가/재현은 `backend/ml/README.md` 참조. 이 작업에서는 프론트 파일을 수정하지 않는다.
+
+### 현재 대기열
+`GET /api/v1/stores/seomun/eta`
+
+```json
+{
+  "success": true,
+  "data": {
+    "storeId": "seomun",
+    "activeOrders": 0,
+    "waitTimeMinutes": 0.0,
+    "npcCount": 0,
+    "source": "SYNTHETIC_MODEL",
+    "modelVersion": "seomun-rf-synthetic-v1",
+    "synthetic": true,
+    "secondsPerSimulatedMinute": 5,
+    "appliedToOrders": false
+  },
+  "error": null
+}
+```
+
+- `activeOrders`: 완료 시각이 현재보다 뒤인 서문분식 주문 수(메뉴 행/수량이 아님).
+- `waitTimeMinutes`: **기존 대기 주문을 모두 준비하기까지 남은 가상 분**, 새 주문의 준비시간은 포함하지 않는다.
+- `npcCount`: 0분은 0명, 초과 시 `ceil(분/3)`, 지도 표시를 위한 최대 10명. 실제 인원수가 아니다. 최대치를 넘어도 대기시간 수치는 잘라내지 않는다.
+- `waitTimeMinutes` 표시는 소수 둘째 자리 반올림, NPC는 반올림 전 값으로 계산한다.
+- 조회 시 주문/코인/퀘스트는 변경하지 않는다. 접수·시간 경과·초기화에 따라 결과가 바뀐다.
+
+### 주문 전 준비 완료시간 견적
+`POST /api/v1/stores/seomun/eta`
+
+```json
+{"items":[{"menuId":"tteok","quantity":1},{"menuId":"fried","quantity":1}]}
+```
+
+응답 `data` 필드:
+
+| 필드 | 의미 |
+|---|---|
+| storeId | seomun |
+| queueWaitMinutes | 먼저 접수된 주문의 남은 가상 분 |
+| preparationMinutes | 입력한 메뉴·수량에 대한 모델의 준비시간 예측 |
+| estimatedMinutes | 대기 + 해당 주문 준비시간 |
+| readyAfterSeconds | 현재 배속에서 예상 실제 대기 초, 올림 |
+| npcCount | 이 견적 전체 시간에 대응하는 NPC 수; 현재 지도 대기열은 GET 응답 사용 |
+| source / modelVersion / synthetic | SYNTHETIC_MODEL / seomun-rf-synthetic-v1 / true |
+| secondsPerSimulatedMinute | 가상 1분당 실제 초(기본 5) |
+| appliedToOrders | 주문 적용 기능 활성화 여부 |
+
+조회 전용 견적이므로 멱등키가 필요 없고 주문·코인 차감·구매 집계가 발생하지 않는다. 견적 후 다른 주문이 들어오면 실제 주문 시각의 ETA가 달라질 수 있다. 실제 주문에서는 서버가 메뉴·대기열을 다시 확인하며 클라이언트가 대기 주문 수나 예측값을 주입할 수 없다.
+
+검증: 1~4개 메뉴 행, 각 메뉴 수량 1~99 정수, 중복 메뉴 거부. 비어 있는 본문/항목·잘못된 수량·다른 가게의 예측 요청은 `INVALID_INPUT_VALUE`(400), 없는 가게는 `STORE_NOT_FOUND`(404), 서문분식에 없는 메뉴는 `MENU_NOT_FOUND`(404).
+
+### 기존 API와 연결 / 프론트 전달 사항
+- `SEOMUN_ETA_ENABLED=false`가 기본. 기존 `/orders`의 15초 완료와 `/stores`의 고정 대기시간은 유지한다. 새 API는 미리 검증 가능하지만 `appliedToOrders=false`임을 표시한다.
+- 프론트가 시연 표시 및 갱신을 준비한 뒤 true로 전환한다. 활성화 시 서문분식 주문의 완료 시각은 FIFO 대기 + 학습 모델 준비시간으로 결정해 DB에 저장한다. 사용자 행 잠금·기존 주문 재시도 검사 안에서 처리하므로 중복 구매가 대기열을 늘리지 않는다. 코인 부족·트랜잭션 롤백도 대기열을 남기지 않는다.
+- 활성화된 `/stores`의 서문분식 `waitTimeMinutes`는 GET 대기열의 분을 정수 올림한 값이다. `npcCount`는 서버 값을 사용한다. 기타 가게의 대기시간/혼잡도는 기존 시연 값이다.
+- `/stores`에 `waitTimeSource` (`STATIC_DEMO` 또는 `SYNTHETIC_MODEL`), `modelVersion`, `synthetic`, `secondsPerSimulatedMinute`가 추가된다. 기존 `mock:true`는 유지한다.
+- 가게 상세의 메뉴 데이터는 그대로 유지한다. 화면에서 “합성 데이터 기반 AI 시연 예상”이라고 표시하고 실제 방문객 수/매장 관측값으로 표시하지 않는다.
+- 프론트는 주문 성공 후 및 지도 활성화 중 적절한 간격(예: 5초)으로 대기열을 재조회해야 한다. 이번에는 폴링/NPC 렌더링을 변경하지 않았다.
+- 영수증 상태와 리뷰 가능 여부는 저장된 완료 시각 기준이다. `readyAfterSeconds`를 15로 하드코딩하지 않는다. 이 값은 최초 대기 초이며 매 조회 시 남은 시간을 의미하지 않는다.
+- V5는 기존 주문에 15초 완료 시각을 채우며 삭제하지 않는다. 운영 MariaDB 마이그레이션 적용 검증은 배포 담당자 확인이 필요하다.

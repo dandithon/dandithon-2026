@@ -17,3 +17,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
   paths-to-match: /api/v1/**
+
+# Opt in after the frontend is ready; previews remain available when disabled.
+eta:
+  enabled: ${SEOMUN_ETA_ENABLED:false}
+  seconds-per-minute: ${SEOMUN_ETA_SECONDS_PER_MINUTE:5}
