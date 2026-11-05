@@ -139,7 +139,7 @@ class Be1IntegrationTest {
     @Test void zonesAndSwaggerExposeAllOperations() throws Exception {
         assertThat(get("/map/zones").path("zones").size()).isEqualTo(4);
         var api=json(request("GET","/v3/api-docs",null),200);
-        assertThat(api.path("paths").size()).isEqualTo(17);
+        assertThat(api.path("paths").size()).isEqualTo(20);
         json(request("GET","/api/v1/no-such-route",null),404);
         var ui=request("GET","/swagger-ui/index.html",null);
         assertThat(ui.statusCode()).isEqualTo(200);
@@ -163,5 +163,25 @@ class Be1IntegrationTest {
         assertThat(step2.path("level").asInt()).isEqualTo(2);
         assertThat(step2.path("exp").asLong()).isEqualTo(10L);
         assertThat(step2.path("nextLevelExp").asLong()).isEqualTo(200L);
+    }
+    @Test void favoritesToggleAndListWorkProperly() throws Exception {
+        var favs0 = json(request("GET","/api/v1/users/me/favorites",null),200).path("data");
+        assertThat(favs0.path("favorites").size()).isZero();
+
+        var t1 = json(request("PATCH","/api/v1/users/me/favorites/seomun",null),200).path("data");
+        assertThat(t1.path("storeId").asText()).isEqualTo("seomun");
+        assertThat(t1.path("favorite").asBoolean()).isTrue();
+        assertThat(t1.path("favorites").get(0).asText()).isEqualTo("seomun");
+
+        var favs1 = json(request("GET","/api/v1/users/me/favorites",null),200).path("data");
+        assertThat(favs1.path("favorites").size()).isEqualTo(1);
+        assertThat(favs1.path("favorites").get(0).asText()).isEqualTo("seomun");
+
+        var t2 = json(request("PATCH","/api/v1/users/me/favorites/seomun",null),200).path("data");
+        assertThat(t2.path("favorite").asBoolean()).isFalse();
+        assertThat(t2.path("favorites").size()).isZero();
+
+        var err = json(request("PATCH","/api/v1/users/me/favorites/bad-store",null),404);
+        assertThat(err.path("error").path("code").asText()).isEqualTo("STORE_NOT_FOUND");
     }
 }

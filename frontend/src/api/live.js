@@ -45,6 +45,7 @@ export function createLiveApi(request, storage) {
       const [{stores},user,{receipts},quests,{zones}]=await Promise.all([
         request('/stores'),request('/users/me'),request('/orders/receipts'),request('/quests'),request('/map/zones')
       ]);
+      if (user && Array.isArray(user.favorites)) local.favorites = user.favorites;
       const entries=await Promise.all(stores.map(async summary=>{
         const path='/stores/'+encodeURIComponent(summary.id);
         const [detail,{reviews}]=await Promise.all([request(path),request(path+'/reviews')]);
@@ -69,7 +70,16 @@ export function createLiveApi(request, storage) {
       persist();return snapshot();
     },
     async favorite(id){
-      local.favorites=local.favorites.includes(id)?local.favorites.filter(s=>s!==id):[...local.favorites,id];
+      try {
+        const res = await request('/users/me/favorites/' + encodeURIComponent(id), { method: 'PATCH' });
+        if (res && Array.isArray(res.favorites)) {
+          local.favorites = res.favorites;
+        } else {
+          local.favorites = local.favorites.includes(id) ? local.favorites.filter(s => s !== id) : [...local.favorites, id];
+        }
+      } catch {
+        local.favorites = local.favorites.includes(id) ? local.favorites.filter(s => s !== id) : [...local.favorites, id];
+      }
       persist();return snapshot();
     },
     async addToCart(itemId,quantity){
