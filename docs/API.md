@@ -81,6 +81,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | 내 정보 조회 | `GET` | `/api/v1/users/me` | 기본 정보, 잔액, 레벨, 착용 장비 |
 | 닉네임 변경 | `PATCH` | `/api/v1/users/me/nickname` | 닉네임 수정 (MVP 선택) |
 | 코인 충전 | `POST` | `/api/v1/users/me/charge` | 시연용 코인 충전 (기본 100,000 코인) |
+| 경험치 획득/레벨업 | `POST` | `/api/v1/users/me/exp` | 경험치 획득 및 자동 레벨업 (주문 시 10% 자동 지급) |
 | 데모 초기화 | `POST` | `/api/v1/demo/reset` | 발표 시연용 데이터 초기화 (코인 1,000 복구) |
 | 장비 목록 조회 | `GET` | `/api/v1/profile/equipments` | 가방 탭: 획득 및 착용 여부 |
 | 장비 착용/해제 | `PATCH` | `/api/v1/profile/equipments/{id}/toggle` | 장비 착용 또는 해제 |
@@ -185,7 +186,41 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 
 ---
 
-### 4.2-2 시연용 데모 데이터 초기화 (발표 전 리셋)
+### 4.2-2 경험치 획득 및 자동 레벨업
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/users/me/exp`
+- **설명**: 사용자가 경험치를 획득하며, `nextLevelExp` 도달 시 자동으로 레벨이 증가하고 다음 목표 경험치가 갱신됩니다. (음식 주문 시에도 결제 금액의 10%가 자동 적립됩니다.)
+- **Request Body (선택, 생략 시 기본 50 exp)**:
+```json
+{
+  "exp": 50
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "nickname": "최수연",
+    "balance": 200000,
+    "level": 2,
+    "exp": 10,
+    "nextLevelExp": 200,
+    "equipped": {
+      "head": null,
+      "body": null,
+      "feet": null,
+      "neck": null
+    }
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.2-3 시연용 데모 데이터 초기화 (발표 전 리셋)
 - **Method**: `POST`
 - **Endpoint**: `/api/v1/demo/reset`
 - **설명**: 주문 내역, 리뷰, 구매 횟수(배지 진행도)를 전부 초기화하고 유저 코인을 1,000으로 원상복구합니다.

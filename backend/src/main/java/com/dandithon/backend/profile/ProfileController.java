@@ -10,6 +10,7 @@ public class ProfileController {
     public ProfileController(ProfileService service) { this.service=service; }
     public record NicknameRequest(@NotBlank String nickname) {}
     public record ChargeRequest(Long amount) {}
+    public record ExpRequest(Long exp) {}
     @Operation(summary="게스트 사용자 정보 조회") @GetMapping("/users/me")
     public ApiResponse<ProfileService.UserView> me() { return ApiResponse.ok(service.me()); }
     @Operation(summary="코인 충전 (기본 100,000, 최대 10,000,000)")
@@ -17,6 +18,12 @@ public class ProfileController {
     public ApiResponse<ProfileService.UserView> charge(@RequestBody(required=false) ChargeRequest request) {
         Long amount = request != null ? request.amount() : null;
         return ApiResponse.ok(service.charge(amount));
+    }
+    @Operation(summary="경험치 획득 및 자동 레벨업 (기본 50)")
+    @PostMapping("/users/me/exp")
+    public ApiResponse<ProfileService.UserView> gainExp(@RequestBody(required=false) ExpRequest request) {
+        Long amount = request != null ? request.exp() : null;
+        return ApiResponse.ok(service.gainExp(amount));
     }
     @Operation(summary="시연용 데모 데이터 초기화 (코인 1,000 복구, 주문/리뷰/배지 초기화)")
     @PostMapping("/demo/reset")

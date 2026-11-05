@@ -67,6 +67,7 @@ public class MarketService {
         var lines=quantities.entrySet().stream().map(e->new GameOrder.Line(catalog.menu(store,e.getKey()),e.getValue())).toList();
         long total=lines.stream().mapToLong(l->l.price*l.quantity).sum();
         user.spend(total);
+        user.gainExp(Math.max(10L, total / 10L));
         var order=new GameOrder("ord-"+UUID.randomUUID(),store,key,signature,total,user.getBalance(),now(),lines);
         orders.save(order);
         for(var line:lines)progress.recordSuccessfulPurchase(1,order.id+":"+line.menuId,line.menuId);
