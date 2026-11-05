@@ -3,6 +3,9 @@ import {menu as demoMenu, stores as demoStores} from '../mocks/fixtures.js';
 export let stores = demoStores;
 export let menu = demoMenu;
 export const getStore = id => stores.find(store => store.id === id) || stores[0];
+export function updateStoreSummaries(summaries) {
+  stores=stores.map(store=>({...store,...summaries.find(summary=>summary.id===store.id)}));
+}
 
 export function useServerCatalog(details) {
   stores = details;

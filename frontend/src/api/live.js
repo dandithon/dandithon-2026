@@ -1,4 +1,4 @@
-import {menu, useServerCatalog} from './catalog.js';
+import {menu,stores,useServerCatalog,updateStoreSummaries} from './catalog.js';
 import {equipment} from '../game/progression.js';
 import {validateCharge,confirmedBalance} from '../game/coins.js';
 
@@ -24,6 +24,8 @@ export function createLiveApi(request, storage) {
       const items=equipments.map(e=>({...e, image:equipment.find(i=>i.id===e.id)?.image,
         itemId:e.targetFoodId, required:e.requiredCount, count:e.currentCount}));
       preferences={...user,items,foods,counts:Object.fromEntries(foods.map(f=>[f.foodId,f.purchaseCount]))};
+      state.balance=user.balance;
+      if(Array.isArray(user.favorites))local.favorites=[...user.favorites];
       return preferences;
     },
     async equip(id){
@@ -69,7 +71,7 @@ export function createLiveApi(request, storage) {
       const [{stores},user,{receipts},quests,{zones}]=await Promise.all([
         request('/stores'),request('/users/me'),request('/orders/receipts'),request('/quests'),request('/map/zones')
       ]);
-      if (user && Array.isArray(user.favorites)) local.favorites = user.favorites;
+      local.favorites=Array.isArray(user?.favorites)?[...user.favorites]:[];
       const entries=await Promise.all(stores.map(async summary=>{
         const path='/stores/'+encodeURIComponent(summary.id);
         const [detail,{reviews}]=await Promise.all([request(path),request(path+'/reviews')]);
@@ -77,7 +79,7 @@ export function createLiveApi(request, storage) {
       }));
       useServerCatalog(entries.map(e=>e.store));
       local.cart=local.cart.filter(line=>menu.some(m=>m.id===line.itemId));
-      state={balance:user.balance,orders:receipts.map(receiptLine),reviews:entries.flatMap(e=>e.reviews),
+      state={balance:user.balance,favoritesSupported:Array.isArray(user.favorites),orders:receipts.map(receiptLine),reviews:entries.flatMap(e=>e.reviews),
         zones, waits:Object.fromEntries(stores.map(s=>[s.id,s.waitTimeMinutes]))};
       setQuests(quests);
       return snapshot();
@@ -87,6 +89,20 @@ export function createLiveApi(request, storage) {
       state.orders=receipts.map(receiptLine);
       return snapshot();
     },
+    async refreshReviews(){
+      const entries=await Promise.all(stores.map(async store=>{
+        const {reviews}=await request('/stores/'+encodeURIComponent(store.id)+'/reviews');
+        return reviews.map(review=>reviewView(review,store.id));
+      }));
+      state.reviews=entries.flat();return snapshot();
+    },
+    async refreshStores(){
+      const {stores}=await request('/stores');
+      updateStoreSummaries(stores);
+      state.waits=Object.fromEntries(stores.map(store=>[store.id,store.waitTimeMinutes]));
+      state.waitsStale=false;
+      return snapshot();
+    },
     async refreshQuests(){setQuests(await request('/quests'));return snapshot();},
     async visit(id){
       setQuests(await request('/stores/'+encodeURIComponent(id)+'/browse',{method:'POST'}));
@@ -94,17 +110,32 @@ export function createLiveApi(request, storage) {
       persist();return snapshot();
     },
     async favorite(id){
-      try {
-        const res = await request('/users/me/favorites/' + encodeURIComponent(id), { method: 'PATCH' });
-        if (res && Array.isArray(res.favorites)) {
-          local.favorites = res.favorites;
-        } else {
-          local.favorites = local.favorites.includes(id) ? local.favorites.filter(s => s !== id) : [...local.favorites, id];
-        }
-      } catch {
-        local.favorites = local.favorites.includes(id) ? local.favorites.filter(s => s !== id) : [...local.favorites, id];
+      if(state.favoritesSupported===false)throw Error('현재 서버는 즐겨찾기 기능을 준비 중이에요.');
+      const res=await request('/users/me/favorites/'+encodeURIComponent(id),{method:'PATCH'});
+      if(!Array.isArray(res?.favorites))throw Error('즐겨찾기 반영 여부를 확인하지 못했어요. 프로필을 다시 열어 확인해 주세요.');
+      local.favorites=[...res.favorites];
+      // The server has committed the toggle; cache failure must not encourage
+      // another toggle that would undo the confirmed action.
+      try{persist();}catch{}
+      return snapshot();
+    },
+    async refreshFavorites(){
+      const {favorites}=await request('/users/me/favorites');
+      if(!Array.isArray(favorites))throw Error('즐겨찾기 목록을 확인할 수 없어요.');
+      local.favorites=[...favorites];state.favoritesSupported=true;
+      try{persist();}catch{}
+      return snapshot();
+    },
+    async deleteReview(id){
+      let result;
+      try{result=await request('/reviews/'+encodeURIComponent(id),{method:'DELETE'});}
+      catch(error){
+        if(error.status===404&&error.code==='INVALID_INPUT_VALUE')throw Error('현재 서버는 리뷰 삭제 기능을 준비 중이에요. 리뷰는 그대로 유지돼요.');
+        throw error;
       }
-      persist();return snapshot();
+      if(result?.deleted!==true)throw Error('리뷰 삭제 결과를 확인하지 못했어요. 목록을 다시 확인해 주세요.');
+      state.reviews=state.reviews.filter(review=>review.id!==id);
+      return snapshot();
     },
     async addToCart(itemId,quantity){
       const line=local.cart.find(i=>i.itemId===itemId);
@@ -133,7 +164,7 @@ export function createLiveApi(request, storage) {
         if(error.code && error.code!=='INTERNAL_SERVER_ERROR'){delete local.pending[signature];persist();}
         throw error;
       }
-      const orders=result.items.map(row=>receiptLine({...row,orderId:result.orderId,storeId,status:result.status}));
+      const orders=result.items.map(row=>receiptLine({...row,orderId:result.orderId,storeId,status:result.status,canReview:result.status==='ready',readyAfterSeconds:result.readyAfterSeconds}));
       state.balance=result.remainingBalance;
       state.orders=[...orders,...state.orders.filter(o=>o.orderId!==result.orderId)];
       if(fromCart)local.cart=local.cart.filter(row=>!items.some(i=>i.menuId===row.itemId));
@@ -145,7 +176,7 @@ export function createLiveApi(request, storage) {
       if(!order)throw Error('영수증을 다시 열어 주세요.');
       const result=await request('/reviews',{method:'POST',body:{orderId:order.orderId,text,rating,imageUrls:[]}});
       state.reviews=[reviewView({...result,id:result.reviewId,photos:false},order.storeId),...state.reviews];
-      state.orders=state.orders.map(o=>o.orderId===order.orderId?{...o,status:'reviewed'}:o);
+      state.orders=state.orders.map(o=>o.orderId===order.orderId?{...o,status:'reviewed',canReview:false}:o);
       return snapshot();
     },
     async claim(id){

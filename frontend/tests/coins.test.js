@@ -12,7 +12,8 @@ function server(){
       if(failure)throw Error('connection lost');
       balance+=options.body.amount;return {balance:invalid?'invalid':balance};
     }
-    if(path==='/users/me')return {balance};
+    if(path==='/users/me')return {balance,favorites:[]};
+    if(path==='/users/me/favorites/seomun')return {favorites:['seomun']};
     if(path==='/stores')return {stores:[]};
     if(path==='/orders/receipts')return {receipts:[]};
     if(path==='/quests')return {daily:[],achievement:[],event:[]};

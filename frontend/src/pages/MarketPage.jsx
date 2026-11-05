@@ -24,13 +24,14 @@ export default function MarketPage({state,onStore,onModal,notify,overlay,active=
   // Dialogs shade the live map; they must never swap its world artwork.
   const screen=joystick?'40:41':'138:1528';
   return <section className="relative size-full overflow-hidden" aria-label="서문시장 지도">
+    {state.waitsStale&&!locationPreview&&<p role="status" className="absolute inset-x-4 top-2 z-10 rounded border border-[#c9a989] bg-[#fff4df] px-3 py-1 text-center text-[10px] text-[#805532]">대기정보 갱신 지연 · 마지막 확인 정보를 표시해요.</p>}
     <div className="absolute left-0 top-0 h-[874px] w-full touch-none select-none" {...(locationPreview?{}:mapHandlers)}>
       <MapArtwork layer="world" assets={manifest['40:41']} position={displayPosition} direction={direction} moving={moving} camera={camera} equipped={progress.equipped}>
     <div className="contents" inert={locationPreview?true:undefined}>
     <button aria-label="서문분식 들어가기" onClick={()=>onStore('seomun')} className="absolute left-[15px] top-[136px] h-[153px] w-[148px] rounded-xl"/>
-    <button aria-label="칼국수 가게 방문" onClick={()=>onStore('noodle')} className="absolute left-[268px] top-[136px] h-[140px] w-[58px]"/>
-    <button aria-label="호떡 가게 방문" onClick={()=>onStore('hotteok')} className="absolute left-[10px] top-[493px] h-[155px] w-[150px]"/>
-    <button aria-label="커피 디저트 가게 방문" onClick={()=>onStore('coffee')} className="absolute left-[270px] top-[493px] h-[155px] w-[122px]"/>
+    <button aria-label="시장칼국수 방문" onClick={()=>onStore('noodle')} className="absolute left-[268px] top-[136px] h-[140px] w-[58px]"/>
+    <button aria-label="달콤호떡 방문" onClick={()=>onStore('hotteok')} className="absolute left-[10px] top-[493px] h-[155px] w-[150px]"/>
+    <button aria-label="골목카페 방문" onClick={()=>onStore('coffee')} className="absolute left-[270px] top-[493px] h-[155px] w-[122px]"/>
     </div>
         <CrowdLayer store={getStore('seomun')} minutes={waits.seomun}/>
         {locationPreview&&<StoreSpotlight store={getStore(locationPreview.storeId)}/>}

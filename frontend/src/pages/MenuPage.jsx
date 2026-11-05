@@ -24,7 +24,7 @@ export default function MenuPage({store,state,tab,setTab,onBack,onFavorite,onSel
           {review.imageUrls?.map((url,i)=><img key={i} src={url} alt="리뷰 사진" className="mt-2 max-h-[140px] max-w-full object-contain"/>)}{review.photos&&!review.imageUrls&&<Art screen="85:581" name="imgImage54" width={280} height={103} className="ml-[52px] mt-[11px]"/>}
         </article>)}</div>}
         {tab==='summary'&&<div className="rounded-xl border border-[#d8bfa2] bg-[#fff1de] p-6"><h2 className="font-semibold">AI 요약 준비 중</h2><p className="mt-3 text-sm leading-6 text-muted">백엔드의 리뷰 요약 기능이 연결되면 이곳에서 확인할 수 있어요.</p></div>}
-        {tab==='info'&&<div className="rounded-xl border border-[#d8bfa2] bg-[#fff1de] p-6"><h2 className="font-semibold">{store.name}</h2><p className="mt-3 text-sm leading-6">{store.description}</p><p className="mt-4 text-sm text-muted">영업시간과 상세 위치는 아직 등록되지 않았어요.</p></div>}
+        {tab==='info'&&<div className="rounded-xl border border-[#d8bfa2] bg-[#fff1de] p-6"><h2 className="font-semibold">{store.name}</h2><p className="mt-3 text-sm leading-6">{store.description}</p><p className="mt-4 text-sm text-muted">영업시간과 상세 위치는 아직 등록되지 않았어요.</p>{store.waitTimeSource==='SYNTHETIC_DEMO_QUEUE'&&<p className="mt-4 rounded-lg bg-[#f5e4c6] p-3 text-xs leading-5 text-[#805532]">AI 대기시간은 합성 주문으로 만든 가상 일반 손님의 시연 정보예요. 실제 손님 수나 실매장 대기시간이 아니며, 사용자 시연 주문은 별도로 우선 처리돼요.</p>}</div>}
       </div>
     </section>
     {tab==='reviews'&&<div className="absolute bottom-[15px] right-[14px]"><ArtButton screen="85:581" name="imgImage59" width={75} height={80} label="리뷰 작성하기" onClick={onReview} className="drop-shadow-md"/></div>}
