@@ -110,6 +110,29 @@ class DailyQuestIntegrationTest {
         equipHat();json(request("POST","/quests/equip-hat/claim",null,null),200);assertThat(balance()).isEqualTo(900);
         json(request("POST","/quests/photo-1/claim",null,null),400);
     }
+    @Test void demoResetClearsActivitiesClaimsAndPurchasesAndAllowsFreshProgress()throws Exception {
+        browse("seomun");browse("noodle");browse("hotteok");
+        String id=buy("before-reset").path("orderId").asText();
+        equipHat();clock.advance(15);
+        json(request("POST","/reviews",review(id),null),201);
+        for(String quest:List.of("visit-3","review-1","equip-hat"))json(request("POST","/quests/"+quest+"/claim",null,null),200);
+        assertThat(count("daily_activities")).isEqualTo(4);
+        var reset=json(request("POST","/demo/reset",null,null),200).path("data");
+        assertThat(reset.path("balance").asLong()).isEqualTo(1000);
+        assertThat(reset.path("equipped").path("head").isNull()).isTrue();
+        for(String table:List.of("daily_activities","quest_claims","game_orders","order_lines","game_reviews","review_images","purchase_events","food_progress"))assertThat(count(table)).as(table).isZero();
+        for(int i=0;i<3;i++){
+            assertThat(quest(i).path("current").asInt()).isZero();
+            assertThat(quest(i).path("status").asText()).isEqualTo("IN_PROGRESS");
+        }
+        json(request("POST","/quests/equip-hat/claim",null,null),400);
+        json(request("PATCH","/profile/equipments/tteok-hat/toggle",null,null),400);
+        browse("seomun");browse("noodle");browse("hotteok");
+        json(request("POST","/quests/visit-3/claim",null,null),200);
+        buy("before-reset");equipHat();
+        json(request("POST","/quests/equip-hat/claim",null,null),200);
+        assertThat(balance()).isEqualTo(1100);
+    }
     @Test void activityRollsBackWithFailedWearAndReviewClaimHistoryIsPreserved()throws Exception {
         buy("unlock");
         var tx=new org.springframework.transaction.support.TransactionTemplate(transactionManager);

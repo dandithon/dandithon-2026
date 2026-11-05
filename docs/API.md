@@ -80,6 +80,8 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 |---|---|---|---|
 | 내 정보 조회 | `GET` | `/api/v1/users/me` | 기본 정보, 잔액, 레벨, 착용 장비 |
 | 닉네임 변경 | `PATCH` | `/api/v1/users/me/nickname` | 닉네임 수정 (MVP 선택) |
+| 코인 충전 | `POST` | `/api/v1/users/me/charge` | 시연용 코인 충전 (기본 100,000 코인) |
+| 데모 초기화 | `POST` | `/api/v1/demo/reset` | 발표 시연용 데이터 초기화 (코인 1,000 복구) |
 | 장비 목록 조회 | `GET` | `/api/v1/profile/equipments` | 가방 탭: 획득 및 착용 여부 |
 | 장비 착용/해제 | `PATCH` | `/api/v1/profile/equipments/{id}/toggle` | 장비 착용 또는 해제 |
 | 배지 목록 조회 | `GET` | `/api/v1/profile/badges` | 수집 음식 탭: 음식별 횟수/배지 |
@@ -144,6 +146,67 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
   "success": true,
   "data": {
     "nickname": "서문탐험가"
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.2-1 코인 충전 (시연 및 테스트용)
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/users/me/charge`
+- **Request Body (선택, 생략 시 기본 100,000 충전)**:
+```json
+{
+  "amount": 100000
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "nickname": "최수연",
+    "balance": 100000,
+    "level": 1,
+    "exp": 0,
+    "nextLevelExp": 100,
+    "equipped": {
+      "head": null,
+      "body": null,
+      "feet": null,
+      "neck": null
+    }
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.2-2 시연용 데모 데이터 초기화 (발표 전 리셋)
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/demo/reset`
+- **설명**: 주문 내역, 리뷰, 구매 횟수(배지 진행도)를 전부 초기화하고 유저 코인을 1,000으로 원상복구합니다.
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "nickname": "승우",
+    "balance": 1000,
+    "level": 1,
+    "exp": 0,
+    "nextLevelExp": 100,
+    "equipped": {
+      "head": null,
+      "body": null,
+      "feet": null,
+      "neck": null
+    }
   },
   "error": null
 }
@@ -655,3 +718,5 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 - 잘못된 가게는 `STORE_NOT_FOUND`(404). 실패 시 가게 진입을 성공 처리하지 않고 재시도할 수 있다.
 - GPS 좌표나 실제 위치를 받지 않는다. 현재 공용 게스트 기준이며, 접속자별 독립 진행도는 사용자 구분 기능 도입 후 가능하다.
 - 백엔드 V3 마이그레이션과 browse API를 먼저 배포한 뒤 프론트를 배포한다. 구 버전 서버는 이 경로가 없으므로 새 프론트의 가게 진입이 실패한다.
+
+시연 초기화(`POST /api/v1/demo/reset`) 시 `daily_activities`의 가게 둘러보기·모자 착용 기록도 삭제한다. 기존 주문·리뷰·수령 내역과 함께 초기화하므로 당일 미션은 진행도 0으로 돌아가며, 새 행동으로 다시 완료할 수 있다.

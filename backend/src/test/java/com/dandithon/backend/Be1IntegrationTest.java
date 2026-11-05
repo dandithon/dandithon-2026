@@ -136,13 +136,21 @@ class Be1IntegrationTest {
         assertThat(json(request("GET","/api/v1/users/me",null),404).path("error").path("code").asText()).isEqualTo("USER_NOT_FOUND");
         assertThat(events.count()).isZero();
     }
-    @Test void zonesAndSwaggerExposeAllFifteenOperations() throws Exception {
+    @Test void zonesAndSwaggerExposeAllOperations() throws Exception {
         assertThat(get("/map/zones").path("zones").size()).isEqualTo(4);
         var api=json(request("GET","/v3/api-docs",null),200);
-        assertThat(api.path("paths").size()).isEqualTo(15);
+        assertThat(api.path("paths").size()).isEqualTo(17);
         json(request("GET","/api/v1/no-such-route",null),404);
         var ui=request("GET","/swagger-ui/index.html",null);
         assertThat(ui.statusCode()).isEqualTo(200);
         assertThat(ui.body()).contains("Swagger UI");
+    }
+    @Test void chargeAndResetEndpointsWorkProperly() throws Exception {
+        var charged = json(request("POST","/api/v1/users/me/charge","{\"amount\":100000}"),200).path("data");
+        assertThat(charged.path("balance").asLong()).isEqualTo(101000L);
+
+        var reset = json(request("POST","/api/v1/demo/reset",null),200).path("data");
+        assertThat(reset.path("balance").asLong()).isEqualTo(1000L);
+        assertThat(reset.path("nickname").asText()).isEqualTo("승우");
     }
 }
