@@ -4,15 +4,16 @@ import {featuresFromSchema,createFeatureDiscovery} from '../src/api/features.js'
 import {createLiveApi} from '../src/api/live.js';
 
 test('older deployment reports missing endpoints without pretending they are available',()=>{
-  assert.deepEqual(featuresFromSchema({paths:{'/api/v1/users/me':{get:{}}}}),{reviewDelete:false,experience:false,favorites:false});
+  assert.deepEqual(featuresFromSchema({paths:{'/api/v1/users/me':{get:{}}}}),{photoUpload:false,reviewDelete:false,experience:false,favorites:false});
   assert.throws(()=>featuresFromSchema({}),/API 기능/);
 });
 test('latest deployment enables each feature by its HTTP operation',()=>{
   assert.deepEqual(featuresFromSchema({paths:{
+    '/api/v1/review-photos':{post:{}},
     '/api/v1/reviews/{reviewId}':{delete:{}},
     '/api/v1/users/me/exp':{post:{}},
     '/api/v1/users/me/favorites/{storeId}':{patch:{}},
-  }}),{reviewDelete:true,experience:true,favorites:true});
+  }}),{photoUpload:true,reviewDelete:true,experience:true,favorites:true});
   assert.equal(featuresFromSchema({paths:{'/api/v1/reviews/{reviewId}':{get:{}}}}).reviewDelete,false);
 });
 test('feature discovery uses backend docs and does not mutate gameplay',async()=>{

@@ -154,8 +154,8 @@ export default function App(){
   const refreshFavorites=()=>run(async()=>setState(await marketApi.refreshFavorites()));
   const refreshReviews=()=>run(async()=>setState(await marketApi.refreshReviews()));
   const openFavorite=id=>{if(lock.current)return;setModal(null);visit(id);};
-  const saveReview=(id,text,rating)=>run(async()=>{
-    setState(await marketApi.review(id,text,rating,preferences.nickname));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');
+  const saveReview=(id,text,rating,imageUrls=[])=>run(async()=>{
+    setState(await marketApi.review(id,text,rating,preferences.nickname,imageUrls));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');
     try{setState(await marketApi.refreshQuests());}
     catch{notify('리뷰는 저장됐어요. 미션 창에서 최신 진행도를 확인해 주세요.');}
   });
@@ -179,7 +179,7 @@ export default function App(){
           {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
           {modal==='quests'&&<QuestDialog state={state} onClose={close} onRefresh={()=>run(async()=>setState(await marketApi.refreshQuests()))} onClaim={id=>run(async()=>{const updated=await marketApi.claim(id);setState(updated);notify(`${updated.lastReward?.amount?.toLocaleString('ko-KR')||''} 코인 보상을 받았어요!`);await refreshProfile();})} notify={notify} busy={busy}/>}
-          {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={saveReview}/>}
+          {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={saveReview} onUpload={marketApi.uploadReviewPhoto} photoSupported={state.features?.photoUpload}/>}
           {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={items=>order(items,true)} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
           </div>}
         </>}

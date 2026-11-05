@@ -6,10 +6,12 @@ const lineId = (orderId, menuId) => orderId + ':' + menuId;
 const receiptLine = row => ({...row, id:lineId(row.orderId,row.menuId), itemId:row.menuId});
 const reviewView = (row, storeId) => ({...row, storeId, name:row.authorName});
 
-export function createLiveApi(request, storage,discoverFeatures) {
+export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl) {
   const key='dandi-api-guest-local-v1';
   let local={cart:[],favorites:[],visits:[]};
   let state={}, preferences={};
+  const mediaUrl=url=>url?.startsWith('/api/v1/review-photos/')&&mediaBaseUrl?new URL(url,mediaBaseUrl).href:url;
+  const reviewWithPhotos=(row,storeId)=>({...reviewView(row,storeId),imageUrls:row.imageUrls?.map(mediaUrl)});
   const snapshot=()=>({...state, cart:[...local.cart], favorites:[...local.favorites], visits:[...local.visits]});
   const persist=()=>storage.setItem(key, JSON.stringify(local));
   const setQuests=quests=>{
@@ -76,7 +78,7 @@ export function createLiveApi(request, storage,discoverFeatures) {
       const entries=await Promise.all(stores.map(async summary=>{
         const path='/stores/'+encodeURIComponent(summary.id);
         const [detail,{reviews}]=await Promise.all([request(path),request(path+'/reviews')]);
-        return {store:{...summary,...detail},reviews:reviews.map(r=>reviewView(r,summary.id))};
+        return {store:{...summary,...detail},reviews:reviews.map(r=>reviewWithPhotos(r,summary.id))};
       }));
       useServerCatalog(entries.map(e=>e.store));
       local.cart=local.cart.filter(line=>menu.some(m=>m.id===line.itemId));
@@ -99,7 +101,7 @@ export function createLiveApi(request, storage,discoverFeatures) {
     async refreshReviews(){
       const entries=await Promise.all(stores.map(async store=>{
         const {reviews}=await request('/stores/'+encodeURIComponent(store.id)+'/reviews');
-        return reviews.map(review=>reviewView(review,store.id));
+        return reviews.map(review=>reviewWithPhotos(review,store.id));
       }));
       state.reviews=entries.flat();return snapshot();
     },
@@ -179,11 +181,20 @@ export function createLiveApi(request, storage,discoverFeatures) {
       delete local.pending[signature];persist();
       return {state:snapshot(),orders};
     },
-    async review(id,text,rating){
+    async uploadReviewPhoto(id,file){
+      if(state.features?.photoUpload===false)throw Error('현재 서버는 사진 첨부 기능을 준비 중이에요.');
+      const order=state.orders.find(row=>row.id===id);
+      if(!order)throw Error('영수증을 다시 열어 주세요.');
+      const form=new FormData();form.append('orderId',order.orderId);form.append('file',file,'review.jpg');
+      const result=await request('/review-photos',{method:'POST',body:form});
+      if(!result?.url?.startsWith('/api/v1/review-photos/'))throw Error('사진 업로드 결과를 확인하지 못했어요.');
+      return {url:result.url,preview:mediaUrl(result.url)};
+    },
+    async review(id,text,rating,_nickname,imageUrls=[]){
       const order=state.orders.find(o=>o.id===id);
       if(!order)throw Error('영수증을 다시 열어 주세요.');
-      const result=await request('/reviews',{method:'POST',body:{orderId:order.orderId,text,rating,imageUrls:[]}});
-      state.reviews=[reviewView({...result,id:result.reviewId,photos:false},order.storeId),...state.reviews];
+      const result=await request('/reviews',{method:'POST',body:{orderId:order.orderId,text,rating,imageUrls}});
+      state.reviews=[reviewWithPhotos({...result,id:result.reviewId,photos:imageUrls.length>0,imageUrls},order.storeId),...state.reviews];
       state.orders=state.orders.map(o=>o.orderId===order.orderId?{...o,status:'reviewed',canReview:false}:o);
       return snapshot();
     },
