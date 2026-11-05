@@ -5,7 +5,7 @@ import StorePage from '../pages/StorePage';
 import MenuPage from '../pages/MenuPage';
 
 // Keep the scene and sheet mounted across information/menu navigation.
-export default function StoreExperience({expanded,store,state,onBack,onFavorite,onMenu,onReviews,notify,tab,setTab,onSelect,onReview,onCart}){
+export default function StoreExperience({expanded,store,state,onBack,onFavorite,onMenu,onReviews,notify,tab,setTab,onSelect,onReview,onCart,onLocation}){
   const [dragOffset,setDragOffset]=useState(0),[dragging,setDragging]=useState(false);
   const height=Math.max(370,Math.min(652,(expanded?652:370)-dragOffset));
   const toggle=()=>{setDragOffset(0);expanded?onBack():onMenu();};
@@ -16,7 +16,7 @@ export default function StoreExperience({expanded,store,state,onBack,onFavorite,
     {expanded&&<button type="button" aria-label="가게 첫 화면으로 돌아가기" onClick={onBack} className="absolute inset-x-0 top-0" style={{height:874-height}}/>}
     <section data-store-sheet data-dragging={dragging} className="store-sheet absolute inset-x-0 bottom-0 overflow-hidden rounded-t-[30px] bg-paper" style={{height,transition:dragging?'none':undefined}}>
       <div className="store-sheet-content absolute inset-0" aria-hidden={expanded} inert={expanded?true:undefined} style={{opacity:expanded?0:1,pointerEvents:expanded?'none':'auto'}}>
-        <StorePage embedded store={store} state={state} onBack={onBack} onFavorite={onFavorite} onMenu={onMenu} onReviews={onReviews} notify={notify}/>
+        <StorePage onLocation={onLocation} embedded store={store} state={state} onBack={onBack} onFavorite={onFavorite} onMenu={onMenu} onReviews={onReviews} notify={notify}/>
       </div>
       <div className="store-sheet-content absolute inset-0" aria-hidden={!expanded} inert={!expanded?true:undefined} style={{opacity:expanded?1:0,pointerEvents:expanded?'auto':'none'}}>
         <MenuPage embedded store={store} state={state} tab={tab} setTab={setTab} onBack={onBack} onFavorite={onFavorite} onSelect={onSelect} onReview={onReview} onCart={onCart}/>

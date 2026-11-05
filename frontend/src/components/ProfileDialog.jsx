@@ -9,7 +9,7 @@ import {badges} from '../game/progression';
 import {collectionFoods} from '../game/profile';
 
 export default function ProfileDialog({state,preferences,progress,onClose,onEquip,onRename,busy,syncError,onRefresh}){
-  const [tab,setTab]=useState('bag'),[editing,setEditing]=useState(false),[name,setName]=useState(preferences.nickname);
+  const [tab,setTab]=useState('bag'),[editing,setEditing]=useState(false),[name,setName]=useState(preferences.nickname),[previewDirection,setPreviewDirection]=useState('down');
   const {items,equipped,counts}=progress;
   const serverProfile=Boolean(preferences.items);
   const foods=collectionFoods(preferences,menu,counts);
@@ -29,12 +29,18 @@ export default function ProfileDialog({state,preferences,progress,onClose,onEqui
       </nav>
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-5" key={tab}>
         {tab==='bag'&&<>
-          <div className="relative ml-[25px] mr-[38px] mt-[27px] flex h-[260px] justify-between">
-            <div className="relative h-[260px] w-[228px] rounded-[10px] bg-[#f5e6d2] shadow-[inset_0px_4px_4px_0px_rgba(0,0,0,.25)]">
-              <div className="absolute left-[19px] top-[28px] size-[190px]"><PlayerCharacter direction="down" equipped={equipped}/></div>
+          <div className="relative mx-[24px] mt-[27px] flex h-[280px] gap-3">
+            <div className="relative min-w-0 flex-1 rounded-[10px] bg-[#f5e6d2] shadow-[inset_0px_4px_4px_0px_rgba(0,0,0,.25)]">
+              <div className="absolute left-1/2 top-[28px] size-[180px] -translate-x-1/2"><PlayerCharacter direction={previewDirection} equipped={equipped}/></div>
+              <nav aria-label="캐릭터 미리보기 방향" className="absolute inset-x-2 bottom-3 flex justify-center gap-1">
+                {[['down','앞'],['right','옆'],['up','뒤']].map(([direction,label])=><button key={direction} aria-pressed={previewDirection===direction} onClick={()=>setPreviewDirection(direction)} className={`rounded border px-3 py-1 text-[11px] ${previewDirection===direction?'border-[#946034] bg-[#e8c99d]':'border-[#d7c1a6] bg-[#fff7ea]'}`}>{label}</button>)}
+              </nav>
             </div>
-            <div className="flex w-[78px] flex-col justify-between">
-              {['head','body','feet'].map(slot=>{const item=items.find(i=>i.slot===slot),worn=item && equipped[slot]===item.id;if(!item)return null;return <button key={slot} disabled={busy||!item.unlocked} aria-label={`${item.name} ${worn?'해제':'착용'}`} aria-pressed={worn} onClick={()=>onEquip(item.id)} className="relative h-[76px] rounded-[10px] border border-[#c9a989] bg-[#fff7ea] disabled:opacity-50"><img alt="" src={art.profile[item.image]} className="mx-auto h-[44px] w-[64px]"/><span className="absolute inset-x-0 bottom-1 text-[10px]">{worn?'착용 중':item.unlocked?'착용하기':'잠김'}</span></button>;})}
+            <div aria-label="장비 착용 슬롯" className="grid w-[88px] shrink-0 grid-rows-4 gap-2">
+              {['head','body','feet','neck'].map(slot=>{const item=items.find(i=>i.slot===slot),worn=item&&equipped[slot]===item.id;if(!item)return null;return <button key={slot} disabled={busy||!item.unlocked} aria-label={`${item.name} ${worn?'해제':'착용'}`} aria-pressed={worn} onClick={()=>onEquip(item.id)} className={`relative flex flex-col items-center justify-center rounded-[10px] border bg-[#fff7ea] disabled:opacity-50 ${worn?'border-[#ac762e] ring-1 ring-[#d9aa61]':'border-[#c9a989]'}`}>
+                <img alt="" src={art.profile[item.image]} className={`h-[31px] w-[48px] object-contain ${worn?'opacity-100':'opacity-40'}`}/>
+                <span className="text-[10px]">{item.name} · {worn?'해제':item.unlocked?'착용':'잠김'}</span>
+              </button>;})}
             </div>
           </div>
           <h3 className="mx-[28px] mb-2 mt-4 font-retro text-[15px]">보유 아이템</h3>
