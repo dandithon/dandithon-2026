@@ -10,6 +10,7 @@ export default function useExploration(enabled,viewHeight=874){
   const point=useRef(position),cameraRef=useRef(camera),input=useRef({x:0,y:0}),held=useRef(new Set());
   const pointers=useRef(new Map()),gesture=useRef(null),dragged=useRef(false),stickId=useRef(null);
   const updateCamera=next=>{cameraRef.current=next;setCamera(next);};
+  const setViewCamera=useCallback(next=>{const value=clampCamera(next,{width:402,height:viewHeight});cameraRef.current=value;setCamera(value);},[viewHeight]);
   const centerOn=useCallback(position=>{const next=followPlayer(cameraRef.current,position,view);cameraRef.current=next;setCamera(next);},[viewHeight]);
   const stop=()=>{setMoving(false);input.current={x:0,y:0};held.current.clear();setStick({x:0,y:0});stickId.current=null;pointers.current.clear();gesture.current=null;};
   useEffect(()=>{
@@ -65,5 +66,5 @@ export default function useExploration(enabled,viewHeight=874){
     onPointerMove:e=>{if(e.pointerId===stickId.current)moveStick(e);},
     onPointerUp:release,onPointerCancel:release,onLostPointerCapture:release,
   };
-  return {position,direction,moving,camera,stick,mapHandlers,stickHandlers,centerOn};
+  return {position,direction,moving,camera,stick,mapHandlers,stickHandlers,centerOn,setViewCamera};
 }

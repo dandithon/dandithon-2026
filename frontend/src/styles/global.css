@@ -38,6 +38,8 @@ button:not(:disabled):not(.dialog-backdrop):active { opacity: .82; scale: .97; }
 .modal-motion.is-closing .dialog-surface { animation: ui-panel-out 140ms ease-in both; }
 .modal-motion.is-closing[data-modal='profile'] .dialog-surface { animation-name: ui-profile-out; }
 .scene-enter { animation: ui-fade-in 180ms ease-out both; }
+.store-spotlight { animation: store-location-pulse 1100ms ease-in-out 3; }
+@keyframes store-location-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 @keyframes ui-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ui-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes ui-panel-in { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
@@ -47,7 +49,7 @@ button:not(:disabled):not(.dialog-backdrop):active { opacity: .82; scale: .97; }
 @media (prefers-reduced-motion: reduce) {
   button:not(.dialog-backdrop), .hud-action::after { transition: none; }
   button:not(:disabled):not(.dialog-backdrop):active { scale: 1; }
-  .dialog-backdrop, .dialog-surface, .scene-enter { animation: none !important; }
+  .dialog-backdrop, .dialog-surface, .scene-enter, .store-spotlight { animation: none !important; }
 }
 
 .app-shell { box-sizing: border-box; height: 100vh; height: 100svh; display: flex; flex-direction: column; max-width: 402px; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
