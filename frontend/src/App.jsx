@@ -5,6 +5,7 @@ import CoinDialog from './components/CoinDialog';
 import {explorationApi,marketApi,live,validateMode} from './api/service';
 import {progression} from './game/progression';
 import {readProfile} from './game/profile';
+import useRoute from './game/useRoute';
 import {sceneLayout,startLayout} from './game/layout';
 import useModalMotion from './game/useModalMotion';
 import {demoWaits} from './game/crowd';
@@ -21,13 +22,15 @@ import {storeLocations} from './game/storeLocation';
 
 
 export default function App(){
-  const [state,setState]=useState(null),[page,setPage]=useState(()=>location.hash.startsWith('#store')?'store':'start');
-  const [storeId,setStoreId]=useState(()=>getStore(location.hash.split('/')[1]).id);
+  const [state,setState]=useState(null);
+  const [{page,storeId,tab},navigate]=useRoute();
+  const setPage=page=>navigate({page}),setStoreId=storeId=>navigate({storeId}),setTab=tab=>navigate({tab});
   const store=getStore(storeId);
-  const [tab,setTab]=useState('menu'),[selected,setSelected]=useState(null),[reviewOrder,setReviewOrder]=useState(null);
+  const [selected,setSelected]=useState(null),[reviewOrder,setReviewOrder]=useState(null);
   const {modal,setModal,close,closing}=useModalMotion();
   const [locationPreview,setLocationPreview]=useState(null);
   const locationTrigger=useRef(null);
+  useEffect(()=>{const restore=()=>{setModal(null);setLocationPreview(null);};window.addEventListener('popstate',restore);window.addEventListener('hashchange',restore);return()=>{window.removeEventListener('popstate',restore);window.removeEventListener('hashchange',restore);};},[]);
   const [completedOrders,setCompletedOrders]=useState([]);
   const [busy,setBusy]=useState(false),[toast,setToast]=useState(''),[layout,setLayout]=useState({scale:1,height:874});
   const {scale,height:sceneHeight}=layout;
@@ -58,7 +61,7 @@ export default function App(){
       const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
       const visibleHeight=!typing&&visible?.scale===1?Math.min(element.clientHeight,visible.height):element.clientHeight;
       const portraitPhone=window.matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
-      setLayout(portraitPhone&&page==='start'?startLayout(element.clientWidth,visibleHeight-inset):sceneLayout(element.clientWidth,visibleHeight-inset,portraitPhone&&page==='market'));
+      setLayout(portraitPhone&&page==='start'?startLayout(element.clientWidth,visibleHeight-inset):sceneLayout(element.clientWidth,visibleHeight-inset,portraitPhone&&(page==='market'||page==='store'||page==='menu')));
     };
     const observer=new ResizeObserver(resize);observer.observe(element);window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);resize();
     return()=>{observer.disconnect();window.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);};
@@ -129,7 +132,7 @@ export default function App(){
   const visit=id=>run(async()=>{
     // Store details were loaded with the catalog. Mission recording must not
     // prevent browsing when the deployed backend does not support it yet.
-    setStoreId(id);setPage('store');setModal(null);
+    navigate({storeId:id,page:'store',tab:'menu'});setModal(null);
     try{setState(await marketApi.visit(id));}
     catch{notify('가게 정보는 볼 수 있어요. 둘러보기 미션 기록은 반영 여부를 확인하지 못했어요.');}
   });
@@ -140,7 +143,7 @@ export default function App(){
   };
   const returnLocation=()=>{
     if(!locationPreview)return;
-    setStoreId(locationPreview.storeId);setTab(locationPreview.returnTab);setPage(locationPreview.returnPage);setLocationPreview(null);
+    navigate({storeId:locationPreview.storeId,tab:locationPreview.returnTab,page:locationPreview.returnPage});setLocationPreview(null);
     requestAnimationFrame(()=>locationTrigger.current?.isConnected&&locationTrigger.current.focus());
   };
   const favorite=()=>run(async()=>{setState(await marketApi.favorite(storeId));});
@@ -160,7 +163,7 @@ export default function App(){
   });
   const add=(id,q)=>run(async()=>{setState(await marketApi.addToCart(id,q));setModal(null);notify('메뉴를 담았어요. 화면 아래에서 담은 메뉴를 확인하세요.');});
   const openReview=id=>run(async()=>{const data=await marketApi.refreshOrders();setState(data);const ready=data.orders.find(o=>(o.canReview??o.status==='ready')&&(id?o.id===id:menu.find(m=>m.id===o.itemId)?.storeId===storeId));if(!ready){notify('리뷰 작성이 가능한 주문이 없어요. 영수증을 확인해 주세요.');return;}setStoreId(menu.find(m=>m.id===ready.itemId).storeId);setReviewOrder(ready.id);setModal('review');});
-  const toMenu=next=>{setTab(next);setPage('menu');};
+  const toMenu=next=>navigate({tab:next,page:'menu'});
   return <div ref={container} className="app-shell mx-auto w-full">
     <main className="relative mx-auto shrink-0 overflow-hidden shadow-2xl" style={{height:sceneHeight*scale,width:402*scale}}>
       <div className="absolute left-0 top-0 w-[402px] origin-top-left bg-paper font-sans" style={{height:sceneHeight,transform:`scale(${scale})`,'--controls-shift':`${sceneHeight-874}px`}}>
@@ -168,7 +171,7 @@ export default function App(){
           <div className="size-full" inert={modal?true:undefined}>
             {page==='start'&&<StartPage sceneHeight={sceneHeight} onStart={()=>setPage('market')}/>}
             <div hidden={page!=='market'} className={`size-full ${page==='market'?'scene-enter':''}`}><MarketPage locationPreview={locationPreview} onReturnLocation={returnLocation} sceneHeight={sceneHeight} preferences={preferences} progress={progress} waits={state.waits || demoWaits} active={page==='market'} state={state} onStore={visit} onModal={openModal} notify={notify} overlay={modal}/></div>
-            {(page==='store'||page==='menu'||locationPreview)&&<div hidden={page!=='store'&&page!=='menu'} className="size-full"><StoreExperience onLocation={showLocation} expanded={(locationPreview?.returnPage||page)==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/></div>}
+            {(page==='store'||page==='menu'||locationPreview)&&<div hidden={page!=='store'&&page!=='menu'} className="size-full"><StoreExperience sceneHeight={sceneHeight} onLocation={showLocation} expanded={(locationPreview?.returnPage||page)==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/></div>}
           </div>
           {modal&&<div key={modal} data-modal={modal} inert={closing?true:undefined} className={`modal-motion absolute inset-0 z-30 ${closing?'is-closing':''}`}>
           {modal==='coins'&&<CoinDialog balance={state.balance} busy={busy} live={live} onClose={close} onCharge={updateCoins} onCheckBalance={()=>updateCoins()} onReset={resetDemo} onReload={reloadAll}/>}
