@@ -68,12 +68,26 @@ export default function App(){
     const tick=async()=>{if(pending)return;pending=true;try{const data=await marketApi.refreshOrders();if(active)setState(data);}catch(error){if(active){notify(error.message||'영수증을 갱신하지 못했어요.');clearInterval(timer);}}finally{pending=false;}};
     const timer=setInterval(tick,1000);tick();return()=>{active=false;clearInterval(timer);};
   },[modal,notify]);
+  useEffect(()=>{
+    if(!live||page==='start'||!state||!preferences)return;
+    let active=true,pending=false;
+    const tick=async()=>{
+      if(pending||lock.current||document.hidden)return;
+      pending=true;
+      try{const data=await marketApi.refreshStores();if(active)setState(current=>({...current,waits:data.waits,waitsStale:false}));}
+      catch{if(active)setState(current=>({...current,waitsStale:true}));}
+      finally{pending=false;}
+    };
+    const timer=setInterval(tick,15000);document.addEventListener('visibilitychange',tick);tick();
+    return()=>{active=false;clearInterval(timer);document.removeEventListener('visibilitychange',tick);};
+  },[page,Boolean(state),Boolean(preferences)]);
   const run=async task=>{if(lock.current)return;lock.current=true;setBusy(true);try{await task();return true;}catch(error){notify(error.message||'잠시 후 다시 시도해 주세요.');return false;}finally{lock.current=false;setBusy(false);}};
   const refreshProfile=async()=>{
     if(!live)return;
     const {profile,error}=await readProfile(explorationApi);
     setProfileError(error);
-    if(profile){setPreferences(profile);setState(current=>({...current,balance:profile.balance}));}
+    if(profile){setPreferences(profile);setState(current=>({...current,balance:profile.balance,...(Array.isArray(profile.favorites)?{favorites:profile.favorites,favoritesSupported:true}:{})}));}
+    return profile;
   };
   const openModal=name=>{
     if(name==='quests')return run(async()=>{setState(await marketApi.refreshQuests());setModal(name);});
@@ -131,9 +145,22 @@ export default function App(){
     requestAnimationFrame(()=>locationTrigger.current?.isConnected&&locationTrigger.current.focus());
   };
   const favorite=()=>run(async()=>{setState(await marketApi.favorite(storeId));});
-  const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');await refreshProfile();});
+  const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');const profile=await refreshProfile();if(profile&&profile.level>preferences.level)notify(`레벨 업! 레벨 ${profile.level}이 되었어요.`);});
+  const deleteReview=id=>run(async()=>{
+    setState(await marketApi.deleteReview(id));notify('리뷰를 삭제했어요. 영수증에서 다시 작성할 수 있어요.');
+    try{setState(await marketApi.refreshOrders());}
+    catch{notify('삭제는 완료됐어요. 영수증을 다시 열어 작성 가능 상태를 확인해 주세요.');}
+  });
+  const refreshFavorites=()=>run(async()=>setState(await marketApi.refreshFavorites()));
+  const refreshReviews=()=>run(async()=>setState(await marketApi.refreshReviews()));
+  const openFavorite=id=>{if(lock.current)return;setModal(null);visit(id);};
+  const saveReview=(id,text,rating)=>run(async()=>{
+    setState(await marketApi.review(id,text,rating,preferences.nickname));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');
+    try{setState(await marketApi.refreshQuests());}
+    catch{notify('리뷰는 저장됐어요. 미션 창에서 최신 진행도를 확인해 주세요.');}
+  });
   const add=(id,q)=>run(async()=>{setState(await marketApi.addToCart(id,q));setModal(null);notify('메뉴를 담았어요. 화면 아래에서 담은 메뉴를 확인하세요.');});
-  const openReview=id=>run(async()=>{const data=await marketApi.refreshOrders();setState(data);const ready=data.orders.find(o=>o.status==='ready'&&(id?o.id===id:menu.find(m=>m.id===o.itemId)?.storeId===storeId));if(!ready){notify('조리가 완료된 주문이 있어야 리뷰를 작성할 수 있어요.');return;}setStoreId(menu.find(m=>m.id===ready.itemId).storeId);setReviewOrder(ready.id);setModal('review');});
+  const openReview=id=>run(async()=>{const data=await marketApi.refreshOrders();setState(data);const ready=data.orders.find(o=>(o.canReview??o.status==='ready')&&(id?o.id===id:menu.find(m=>m.id===o.itemId)?.storeId===storeId));if(!ready){notify('리뷰 작성이 가능한 주문이 없어요. 영수증을 확인해 주세요.');return;}setStoreId(menu.find(m=>m.id===ready.itemId).storeId);setReviewOrder(ready.id);setModal('review');});
   const toMenu=next=>{setTab(next);setPage('menu');};
   return <div ref={container} className="app-shell mx-auto w-full">
     <main className="relative mx-auto shrink-0 overflow-hidden shadow-2xl" style={{height:sceneHeight*scale,width:402*scale}}>
@@ -146,13 +173,13 @@ export default function App(){
           </div>
           {modal&&<div key={modal} data-modal={modal} inert={closing?true:undefined} className={`modal-motion absolute inset-0 z-30 ${closing?'is-closing':''}`}>
           {modal==='coins'&&<CoinDialog balance={state.balance} busy={busy} live={live} onClose={close} onCharge={updateCoins} onCheckBalance={()=>updateCoins()} onReset={resetDemo} onReload={reloadAll}/>}
-          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={equip} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
+          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={equip} onDeleteReview={deleteReview} onRefreshReviews={refreshReviews} onOpenFavorite={openFavorite} onRefreshFavorites={refreshFavorites} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
           {modal==='map'&&<FullMapDialog onClose={close}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
           {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
           {modal==='quests'&&<QuestDialog state={state} onClose={close} onRefresh={()=>run(async()=>setState(await marketApi.refreshQuests()))} onClaim={id=>run(async()=>{const updated=await marketApi.claim(id);setState(updated);notify(`${updated.lastReward?.amount?.toLocaleString('ko-KR')||''} 코인 보상을 받았어요!`);await refreshProfile();})} notify={notify} busy={busy}/>}
-          {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={(id,text,rating)=>run(async()=>{setState(await marketApi.review(id,text,rating,preferences.nickname));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');})}/>}
+          {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={saveReview}/>}
           {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={items=>order(items,true)} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
           </div>}
         </>}

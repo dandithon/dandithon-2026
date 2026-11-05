@@ -16,7 +16,7 @@ export default function ReceiptDialog({orders,onClose,onReview}){
         <div className="ml-[7px] min-w-0 flex-1"><p className="mb-1 text-[9px] text-muted">{getStore(item.storeId).name}</p><h3 className="text-[13px] leading-4 font-semibold">{item.name}</h3><p className="mt-[1px] text-[12px] text-[#806956]">{order.quantity}개</p></div>
         <div className="flex w-[57px] shrink-0 flex-col gap-[6px] text-center text-[12px] font-semibold">
           <span className={`rounded-[10px] py-[6px] ${order.status==='cooking'?'bg-[#f3d9b3] text-[#825b30]':order.status==='ready'?'bg-[#dcebcb] text-[#49673a]':'bg-[#e8e0d4] text-[#776a5e]'}`}>{order.status==='cooking'?'조리 중':order.status==='ready'?'조리 완료':'작성 완료'}</span>
-          {order.status==='ready'&&<button onClick={()=>onReview(order.id)} className="rounded-[10px] bg-[#f5c76a] py-[6px] text-[#4d321f]">리뷰 작성</button>}
+          {(order.canReview??order.status==='ready')&&<button onClick={()=>onReview(order.id)} className="rounded-[10px] bg-[#f5c76a] py-[6px] text-[#4d321f]">리뷰 작성</button>}
         </div>
       </article>;})}
     </div>

@@ -15,6 +15,7 @@ export function createClient(baseUrl) {
     if (!response.ok || result?.success !== true) {
       const error = Error(result?.error?.message || '서버 응답을 확인할 수 없어요. (' + response.status + ')');
       error.code = result?.error?.code;
+      error.status = response.status;
       throw error;
     }
     return result.data;
