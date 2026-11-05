@@ -1,5 +1,8 @@
 package com.dandithon.backend.profile;
 import com.dandithon.backend.common.ApiException;
+import com.dandithon.backend.market.OrderRepository;
+import com.dandithon.backend.market.QuestClaimRepository;
+import com.dandithon.backend.market.ReviewRepository;
 import com.dandithon.backend.user.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -10,7 +13,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfileService {
     private final UserRepository users;
     private final FoodProgressRepository progress;
-    public ProfileService(UserRepository users,FoodProgressRepository progress) { this.users=users;this.progress=progress; }
+    private final PurchaseEventRepository events;
+    private final OrderRepository orders;
+    private final ReviewRepository reviews;
+    private final QuestClaimRepository claims;
+    public ProfileService(UserRepository users,FoodProgressRepository progress,PurchaseEventRepository events,OrderRepository orders,ReviewRepository reviews,QuestClaimRepository claims) {
+        this.users=users;this.progress=progress;this.events=events;this.orders=orders;this.reviews=reviews;this.claims=claims;
+    }
     private GuestUser user(boolean write) {
         return (write?users.findForUpdate(1):users.findById(1L)).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));
     }
@@ -21,6 +30,25 @@ public class ProfileService {
     }
     public record UserView(long userId,String nickname,long balance,int level,long exp,long nextLevelExp,Map<String,String> equipped) {}
     public UserView me() { GuestUser u=user(false);return new UserView(u.getId(),u.getNickname(),u.getBalance(),u.getLevel(),u.getExp(),u.getNextLevelExp(),equipped(u)); }
+    @Transactional
+    public UserView charge(Long amount) {
+        long value = (amount != null && amount > 0) ? amount : 100_000L;
+        if (value > 10_000_000L) throw ApiException.invalid("1회 최대 충전 금액은 10,000,000 코인이에요.");
+        GuestUser u = user(true);
+        u.reward(value);
+        return me();
+    }
+    @Transactional
+    public UserView resetDemo() {
+        GuestUser u = user(true);
+        u.reset();
+        reviews.deleteAll();
+        orders.deleteAll();
+        events.deleteAll();
+        progress.deleteAll();
+        claims.deleteAll();
+        return me();
+    }
     public record NicknameView(String nickname) {}
     @Transactional
     public NicknameView rename(String value) {

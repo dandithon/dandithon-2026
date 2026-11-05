@@ -80,6 +80,8 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 |---|---|---|---|
 | 내 정보 조회 | `GET` | `/api/v1/users/me` | 기본 정보, 잔액, 레벨, 착용 장비 |
 | 닉네임 변경 | `PATCH` | `/api/v1/users/me/nickname` | 닉네임 수정 (MVP 선택) |
+| 코인 충전 | `POST` | `/api/v1/users/me/charge` | 시연용 코인 충전 (기본 100,000 코인) |
+| 데모 초기화 | `POST` | `/api/v1/demo/reset` | 발표 시연용 데이터 초기화 (코인 1,000 복구) |
 | 장비 목록 조회 | `GET` | `/api/v1/profile/equipments` | 가방 탭: 획득 및 착용 여부 |
 | 장비 착용/해제 | `PATCH` | `/api/v1/profile/equipments/{id}/toggle` | 장비 착용 또는 해제 |
 | 배지 목록 조회 | `GET` | `/api/v1/profile/badges` | 수집 음식 탭: 음식별 횟수/배지 |
@@ -143,6 +145,67 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
   "success": true,
   "data": {
     "nickname": "서문탐험가"
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.2-1 코인 충전 (시연 및 테스트용)
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/users/me/charge`
+- **Request Body (선택, 생략 시 기본 100,000 충전)**:
+```json
+{
+  "amount": 100000
+}
+```
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "nickname": "최수연",
+    "balance": 100000,
+    "level": 1,
+    "exp": 0,
+    "nextLevelExp": 100,
+    "equipped": {
+      "head": null,
+      "body": null,
+      "feet": null,
+      "neck": null
+    }
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.2-2 시연용 데모 데이터 초기화 (발표 전 리셋)
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/demo/reset`
+- **설명**: 주문 내역, 리뷰, 구매 횟수(배지 진행도)를 전부 초기화하고 유저 코인을 1,000으로 원상복구합니다.
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "userId": 1,
+    "nickname": "승우",
+    "balance": 1000,
+    "level": 1,
+    "exp": 0,
+    "nextLevelExp": 100,
+    "equipped": {
+      "head": null,
+      "body": null,
+      "feet": null,
+      "neck": null
+    }
   },
   "error": null
 }
