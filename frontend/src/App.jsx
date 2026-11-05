@@ -1,6 +1,7 @@
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import ProfileDialog from './components/ProfileDialog';
 import FullMapDialog from './components/FullMapDialog';
+import useOrderReadyAlert from './game/useOrderReadyAlert';
 import CoinDialog from './components/CoinDialog';
 import {explorationApi,marketApi,live,validateMode} from './api/service';
 import {progression} from './game/progression';
@@ -36,6 +37,7 @@ export default function App(){
   const {scale,height:sceneHeight}=layout;
   const [preferences,setPreferences]=useState(null),[loadError,setLoadError]=useState('');
   const [profileError,setProfileError]=useState('');
+  const {readyAlert,dismissReadyAlert}=useOrderReadyAlert(state?.orders);
   const progress=useMemo(()=>state&&preferences?progression(state,preferences):null,[state,preferences]);
   const loadId=useRef(0);
   const lock=useRef(false),toastTimer=useRef(),container=useRef(null);
@@ -66,10 +68,25 @@ export default function App(){
     const observer=new ResizeObserver(resize);observer.observe(element);window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);resize();
     return()=>{observer.disconnect();window.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);};
   },[page]);
-  useEffect(()=>{if(modal!=='receipts')return;let active=true,pending=false;
-    const tick=async()=>{if(pending)return;pending=true;try{const data=await marketApi.refreshOrders();if(active)setState(data);}catch(error){if(active){notify(error.message||'영수증을 갱신하지 못했어요.');clearInterval(timer);}}finally{pending=false;}};
-    const timer=setInterval(tick,1000);tick();return()=>{active=false;clearInterval(timer);};
-  },[modal,notify]);
+  const hasCookingOrders=Boolean(state?.orders.some(order=>order.status==='cooking'));
+  useEffect(()=>{
+    if(!state||busy||(!hasCookingOrders&&modal!=='receipts'))return;
+    let active=true,pending=false,errorShown=false;
+    const tick=async()=>{
+      if(pending||lock.current||document.hidden)return;
+      pending=true;
+      try{
+        const data=await marketApi.refreshOrders();
+        if(active){setState(current=>({...current,orders:data.orders}));errorShown=false;}
+      }catch(error){
+        if(active&&!errorShown){notify(error.message||'주문 상태를 갱신하지 못했어요. 다시 확인할게요.');errorShown=true;}
+      }finally{pending=false;}
+    };
+    const timer=setInterval(tick,1000);
+    document.addEventListener('visibilitychange',tick);
+    tick();
+    return()=>{active=false;clearInterval(timer);document.removeEventListener('visibilitychange',tick);};
+  },[Boolean(state),hasCookingOrders,modal,busy,notify]);
   useEffect(()=>{
     if(!live||page==='start'||!state||!preferences)return;
     let active=true,pending=false;
@@ -185,6 +202,10 @@ export default function App(){
           {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={items=>order(items,true)} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
           </div>}
         </>}
+        {readyAlert&&!modal&&<div role="status" className="absolute inset-x-4 top-4 z-50 flex items-start gap-2 rounded-xl border-2 border-[#d78a29] bg-[#fff4df] p-4 text-[#513724] shadow-xl">
+          <button onClick={()=>{dismissReadyAlert();setModal('receipts');}} className="flex-1 text-left text-sm leading-6">주문하신 음식이 조리 완료되었어요! 영수증에서 리뷰를 남겨보세요 🍜</button>
+          <button onClick={dismissReadyAlert} aria-label="조리 완료 알림 닫기" className="flex size-9 shrink-0 items-center justify-center text-xl">×</button>
+        </div>}
         {toast&&<div role="status" className="pointer-events-none absolute inset-x-[24px] bottom-[24px] z-50 rounded-xl border border-[#dec69c] bg-[#3c2b20f2] px-5 py-4 text-center text-[13px] leading-6 text-[#fff4de] shadow-xl">{toast}</div>}
       </div>
     </main>

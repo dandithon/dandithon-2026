@@ -39,3 +39,34 @@ test('lost order response survives reload; review uses the server order ID for a
   assert.ok(reviewed.orders.every(o=>o.status==='reviewed'));
   assert.equal(reviewed.reviews[0].storeId,'seomun');
 });
+
+test('late receipt responses cannot erase a confirmed purchase or undo a review',async()=>{
+  let finishReceipt;
+  const request=async(path,options)=>{
+    if(path==='/orders/receipts' && finishReceipt!==undefined)
+      return new Promise(resolve=>{finishReceipt=resolve;});
+    if(path==='/orders')return {orderId:'new-order',storeId:'seomun',items:options.body.items,remainingBalance:700,status:'ready'};
+    if(path==='/reviews')return {reviewId:'new-review',authorName:'테스트',...options.body};
+    return {
+      '/stores':{stores:[{id:'seomun'}]},
+      '/stores/seomun':{id:'seomun',menus:[{id:'tteok',price:300}]},
+      '/stores/seomun/reviews':{reviews:[]},
+      '/users/me':{balance:1000}, '/orders/receipts':{receipts:[]},
+      '/quests':{daily:[],achievement:[],event:[]}, '/map/zones':{zones:[]}
+    }[path];
+  };
+  const {market}=createLiveApi(request,{getItem:()=>null,setItem(){}});
+  await market.load();
+  finishReceipt=null;
+  const beforePurchase=market.refreshOrders();
+  const placed=await market.order([{itemId:'tteok',quantity:1}]);
+  finishReceipt({receipts:[]});
+  assert.equal((await beforePurchase).orders[0].id,placed.orders[0].id);
+  const beforeReview=market.refreshOrders();
+  await market.review(placed.orders[0].id,'후기',5);
+  finishReceipt({receipts:[{orderId:'new-order',menuId:'tteok',status:'ready',canReview:true}]});
+  const afterReview=await beforeReview;
+  assert.equal(afterReview.orders[0].status,'reviewed');
+  assert.equal(afterReview.orders[0].canReview,false);
+  assert.equal(afterReview.balance,700);
+});
