@@ -15,6 +15,10 @@ public class GuestUser {
     @MapKeyColumn(name="slot", length=16)
     @Column(name="equipment_id", nullable=false, length=64)
     private Map<String,String> equipped = new LinkedHashMap<>();
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name="user_favorites", joinColumns=@JoinColumn(name="user_id"))
+    @Column(name="store_id", nullable=false, length=64)
+    private java.util.Set<String> favorites = new java.util.LinkedHashSet<>();
     protected GuestUser() {}
     public GuestUser(long id) { this.id=id; nickname="승우"; balance=1000; level=1; exp=0; nextLevelExp=100; }
     public Long getId() { return id; }
@@ -24,6 +28,7 @@ public class GuestUser {
     public long getExp() { return exp; }
     public long getNextLevelExp() { return nextLevelExp; }
     public Map<String,String> getEquipped() { return equipped; }
+    public java.util.Set<String> getFavorites() { return favorites; }
     public void spend(long amount) {
         if(amount<=0)throw com.dandithon.backend.common.ApiException.invalid("결제 금액을 확인해 주세요.");
         if(balance<amount)throw new com.dandithon.backend.common.ApiException("INSUFFICIENT_BALANCE","보유 코인이 부족해요. 수량을 줄여 주세요.",org.springframework.http.HttpStatus.BAD_REQUEST);
@@ -36,6 +41,15 @@ public class GuestUser {
     public void rename(String nickname) { this.nickname=nickname; }
     public void toggle(String slot, String id) {
         if(id.equals(equipped.get(slot))) equipped.remove(slot); else equipped.put(slot,id);
+    }
+    public boolean toggleFavorite(String storeId) {
+        if (favorites.contains(storeId)) {
+            favorites.remove(storeId);
+            return false;
+        } else {
+            favorites.add(storeId);
+            return true;
+        }
     }
     public void gainExp(long gained) {
         if(gained<=0) return;
@@ -53,5 +67,6 @@ public class GuestUser {
         exp = 0;
         nextLevelExp = 100;
         equipped.clear();
+        favorites.clear();
     }
 }

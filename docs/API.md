@@ -82,6 +82,8 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | 닉네임 변경 | `PATCH` | `/api/v1/users/me/nickname` | 닉네임 수정 (MVP 선택) |
 | 코인 충전 | `POST` | `/api/v1/users/me/charge` | 시연용 코인 충전 (기본 100,000 코인) |
 | 경험치 획득/레벨업 | `POST` | `/api/v1/users/me/exp` | 경험치 획득 및 자동 레벨업 (주문 시 10% 자동 지급) |
+| 즐겨찾기 목록 조회 | `GET` | `/api/v1/users/me/favorites` | 내 즐겨찾기 가게 ID 목록 |
+| 즐겨찾기 토글 | `PATCH` | `/api/v1/users/me/favorites/{storeId}` | 특정 가게 즐겨찾기 등록/해제 토글 |
 | 데모 초기화 | `POST` | `/api/v1/demo/reset` | 발표 시연용 데이터 초기화 (코인 1,000 복구) |
 | 장비 목록 조회 | `GET` | `/api/v1/profile/equipments` | 가방 탭: 획득 및 착용 여부 |
 | 장비 착용/해제 | `PATCH` | `/api/v1/profile/equipments/{id}/toggle` | 장비 착용 또는 해제 |
@@ -224,7 +226,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 ### 4.2-3 시연용 데모 데이터 초기화 (발표 전 리셋)
 - **Method**: `POST`
 - **Endpoint**: `/api/v1/demo/reset`
-- **설명**: 주문 내역, 리뷰, 구매 횟수(배지 진행도)를 전부 초기화하고 유저 코인을 1,000으로 원상복구합니다.
+- **설명**: 주문 내역, 리뷰, 구매 횟수(배지 진행도), 즐겨찾기를 전부 초기화하고 유저 코인을 1,000으로 원상복구합니다.
 - **Response (200 OK)**:
 ```json
 {
@@ -241,11 +243,52 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
       "body": null,
       "feet": null,
       "neck": null
-    }
+    },
+    "favorites": []
   },
   "error": null
 }
 ```
+
+---
+
+### 4.2-4 즐겨찾기 가게 목록 조회
+- **Method**: `GET`
+- **Endpoint**: `/api/v1/users/me/favorites`
+- **설명**: 현재 사용자가 즐겨찾기한 가게 ID 목록을 반환합니다.
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "favorites": ["seomun", "coffee"]
+  },
+  "error": null
+}
+```
+
+---
+
+### 4.2-5 특정 가게 즐겨찾기 등록/해제 토글
+- **Method**: `PATCH`
+- **Endpoint**: `/api/v1/users/me/favorites/{storeId}`
+- **설명**: 해당 가게가 즐겨찾기에 없으면 추가(`favorite: true`), 이미 있으면 제거(`favorite: false`)합니다.
+- **Path Variable**:
+  - `storeId` (String): 가게 식별자 (`seomun`, `noodle`, `hotteok`, `coffee`)
+- **Response (200 OK)**:
+```json
+{
+  "success": true,
+  "data": {
+    "storeId": "seomun",
+    "favorite": true,
+    "favorites": ["seomun"]
+  },
+  "error": null
+}
+```
+- **오류 응답**:
+  - `404 Not Found`: 존재하지 않는 가게 ID인 경우 (`STORE_NOT_FOUND`)
 
 ---
 

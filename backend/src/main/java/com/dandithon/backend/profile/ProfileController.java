@@ -38,4 +38,14 @@ public class ProfileController {
     public ApiResponse<ProfileService.EquippedView> toggle(@PathVariable String id) { return ApiResponse.ok(service.toggle(id)); }
     @Operation(summary="음식별 구매 횟수와 배지 조회") @GetMapping("/profile/badges")
     public ApiResponse<ProfileService.BadgesView> badges() { return ApiResponse.ok(service.badges()); }
+    @Operation(summary="즐겨찾기 가게 목록 조회")
+    @GetMapping("/users/me/favorites")
+    public ApiResponse<ProfileService.FavoritesView> favorites() {
+        return ApiResponse.ok(service.favorites());
+    }
+    @Operation(summary="가게 즐겨찾기 등록/해제 토글")
+    @PatchMapping("/users/me/favorites/{storeId}")
+    public ApiResponse<ProfileService.FavoriteToggleView> toggleFavorite(@PathVariable String storeId) {
+        return ApiResponse.ok(service.toggleFavorite(storeId));
+    }
 }

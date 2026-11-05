@@ -20,8 +20,9 @@ public class ProfileService {
     private final OrderRepository orders;
     private final ReviewRepository reviews;
     private final QuestClaimRepository claims;
-    public ProfileService(UserRepository users,FoodProgressRepository progress,DailyActivityService activities,com.dandithon.backend.market.DailyActivityRepository dailyActivities,PurchaseEventRepository events,OrderRepository orders,ReviewRepository reviews,QuestClaimRepository claims) {
-        this.users=users;this.progress=progress;this.activities=activities;this.dailyActivities=dailyActivities;this.events=events;this.orders=orders;this.reviews=reviews;this.claims=claims;
+    private final com.dandithon.backend.market.MarketCatalog catalog;
+    public ProfileService(UserRepository users,FoodProgressRepository progress,DailyActivityService activities,com.dandithon.backend.market.DailyActivityRepository dailyActivities,PurchaseEventRepository events,OrderRepository orders,ReviewRepository reviews,QuestClaimRepository claims,com.dandithon.backend.market.MarketCatalog catalog) {
+        this.users=users;this.progress=progress;this.activities=activities;this.dailyActivities=dailyActivities;this.events=events;this.orders=orders;this.reviews=reviews;this.claims=claims;this.catalog=catalog;
     }
     private GuestUser user(boolean write) {
         return (write?users.findForUpdate(1):users.findById(1L)).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));
@@ -31,8 +32,19 @@ public class ProfileService {
         for(String slot:List.of("head","body","feet","neck"))result.put(slot,u.getEquipped().get(slot));
         return result;
     }
-    public record UserView(long userId,String nickname,long balance,int level,long exp,long nextLevelExp,Map<String,String> equipped) {}
-    public UserView me() { GuestUser u=user(false);return new UserView(u.getId(),u.getNickname(),u.getBalance(),u.getLevel(),u.getExp(),u.getNextLevelExp(),equipped(u)); }
+    public record UserView(long userId,String nickname,long balance,int level,long exp,long nextLevelExp,Map<String,String> equipped,Set<String> favorites) {}
+    public UserView me() { GuestUser u=user(false);return new UserView(u.getId(),u.getNickname(),u.getBalance(),u.getLevel(),u.getExp(),u.getNextLevelExp(),equipped(u),u.getFavorites()); }
+    public record FavoritesView(Set<String> favorites) {}
+    public record FavoriteToggleView(String storeId,boolean favorite,Set<String> favorites) {}
+    public FavoritesView favorites() { return new FavoritesView(user(false).getFavorites()); }
+    @Transactional
+    public FavoriteToggleView toggleFavorite(String storeId) {
+        if(storeId==null||storeId.isBlank())throw ApiException.invalid("가게를 확인해 주세요.");
+        catalog.store(storeId);
+        GuestUser u = user(true);
+        boolean isFav = u.toggleFavorite(storeId);
+        return new FavoriteToggleView(storeId, isFav, u.getFavorites());
+    }
     @Transactional
     public UserView charge(Long amount) {
         long value = (amount != null && amount > 0) ? amount : 100_000L;
