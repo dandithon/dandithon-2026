@@ -63,7 +63,7 @@ export default function MapArtwork({ assets, nickname = '승우', equipped = {},
         <p className="[word-break:break-word] absolute font-retro leading-[normal] left-[362px] not-italic text-[30px] text-black top-[69px] tracking-[-0.3px] whitespace-nowrap" data-node-id="40:80">
           +
         </p>
-        <p className="[word-break:break-word] absolute font-retro leading-[normal] left-[266px] not-italic text-[20px] text-white top-[76px] tracking-[-0.2px] whitespace-nowrap" data-node-id="113:993">
+        <p className="[word-break:break-word] absolute font-retro leading-[normal] left-[238px] w-[112px] text-right not-italic text-white top-[76px] tracking-[-0.2px] whitespace-nowrap" data-node-id="113:993" style={{fontSize:balance.toLocaleString('ko-KR').length>10?14:balance.toLocaleString('ko-KR').length>8?17:20}}>
           {balance.toLocaleString('ko-KR')}
         </p>
       </div>

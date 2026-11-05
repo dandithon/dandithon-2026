@@ -38,6 +38,18 @@ export function createLiveApi(request, storage) {
     }
   };
   const market={
+    async resetDemo(){
+      const user=await request('/demo/reset',{method:'POST'});
+      const balance=confirmedBalance(user);
+      local={cart:[],favorites:[...local.favorites],visits:[]};
+      state={...state,balance,orders:[],reviews:[],claimed:[],lastReward:null};
+      setQuests({daily:[],achievement:[],event:[]});
+      preferences={...user};
+      // Server reset is already committed. A device-cache error must not ask the
+      // caller to submit the destructive operation a second time.
+      try{persist();}catch{ /* A full reload rechecks authoritative server data. */ }
+      return {state:snapshot(),user};
+    },
     async charge(amount){
       validateCharge(amount);
       const user=await request('/users/me/charge',{method:'POST',body:{amount}});
@@ -128,8 +140,9 @@ export function createLiveApi(request, storage) {
     },
     async claim(id){
       const result=await request('/quests/'+encodeURIComponent(id)+'/claim',{method:'POST'});
-      state.balance=result.currentBalance;
-      state.claimed=[...state.claimed,id];
+      state.balance=confirmedBalance({balance:result.currentBalance});
+      setQuests(Object.fromEntries(Object.entries(state.quests).map(([group,quests])=>[group,quests.map(q=>q.id===id?{...q,status:'CLAIMED'}:q)])));
+      state.lastReward={id,amount:result.rewardCoin};
       return snapshot();
     }
   };

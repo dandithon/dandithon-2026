@@ -40,7 +40,7 @@ export default function App(){
       validateMode();
       const [data,profile]=await Promise.all([marketApi.load(),explorationApi.load()]);
       if(!data||!Number.isFinite(data.balance)||!['orders','reviews','cart','claimed','visits','favorites'].every(key=>Array.isArray(data[key])))throw Error('시장 저장 정보 형식을 확인할 수 없어요. 기존 데이터를 확인해 주세요.');
-      if(id===loadId.current){setState(data);setPreferences(profile);}
+      if(id===loadId.current){setState(data);setPreferences(profile);setProfileError('');}
     }catch(error){if(id===loadId.current)setLoadError(error.message||'시장을 불러오지 못했어요.');}
   },[]);
   useEffect(()=>{load();return()=>{loadId.current++;clearTimeout(toastTimer.current);};},[load]);
@@ -85,6 +85,31 @@ export default function App(){
       setState(result.state);setPreferences(current=>({...current,...result.user}));
     }finally{lock.current=false;setBusy(false);}
   };
+  const reloadAll=async()=>{
+    if(lock.current)return;
+    lock.current=true;setBusy(true);setModal(null);setPreferences(null);
+    try{await load();}finally{lock.current=false;setBusy(false);}
+  };
+  const resetDemo=async()=>{
+    if(lock.current)throw Error('다른 요청을 처리하고 있어요.');
+    lock.current=true;setBusy(true);
+    let resetAccepted=false;
+    try{
+      const result=await marketApi.resetDemo();resetAccepted=true;
+      setState(result.state);setModal(null);setPreferences(null);setCompletedOrders([]);setReviewOrder(null);setSelected(null);setPage('market');
+      if(!live)await explorationApi.resetPreferences();
+      await load();
+      notify('시연 데이터를 초기화했어요.');
+    }catch(error){
+      if(resetAccepted){setLoadError('초기화는 반영됐지만 화면을 다시 불러오지 못했어요. '+error.message);return;}
+      throw error;
+    }finally{lock.current=false;setBusy(false);}
+  };
+  const equip=id=>run(async()=>{
+    setPreferences(await explorationApi.equip(id));
+    try{setState(await marketApi.refreshQuests());}
+    catch{notify('장비는 반영됐어요. 미션 창에서 최신 진행도를 다시 확인해 주세요.');}
+  });
   const visit=id=>run(async()=>{setState(await marketApi.visit(id));setStoreId(id);setPage('store');setModal(null);});
   const favorite=()=>run(async()=>{setState(await marketApi.favorite(storeId));});
   const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');await refreshProfile();});
@@ -101,13 +126,13 @@ export default function App(){
             {(page==='store'||page==='menu')&&<StoreExperience expanded={page==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/>}
           </div>
           {modal&&<div key={modal} data-modal={modal} inert={closing?true:undefined} className={`modal-motion absolute inset-0 z-30 ${closing?'is-closing':''}`}>
-          {modal==='coins'&&<CoinDialog balance={state.balance} busy={busy} live={live} onClose={close} onCharge={updateCoins} onCheckBalance={()=>updateCoins()}/>}
-          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={id=>run(async()=>setPreferences(await explorationApi.equip(id)))} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
+          {modal==='coins'&&<CoinDialog balance={state.balance} busy={busy} live={live} onClose={close} onCharge={updateCoins} onCheckBalance={()=>updateCoins()} onReset={resetDemo} onReload={reloadAll}/>}
+          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={equip} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
           {modal==='map'&&<FullMapDialog zones={state.zones} onClose={close} onStore={visit} waits={state.waits || demoWaits} busy={busy}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
           {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
-          {modal==='quests'&&<QuestDialog state={state} onClose={close} onClaim={id=>run(async()=>{setState(await marketApi.claim(id));notify('보상 코인을 받았어요!');await refreshProfile();})} notify={notify} busy={busy}/>}
+          {modal==='quests'&&<QuestDialog state={state} onClose={close} onRefresh={()=>run(async()=>setState(await marketApi.refreshQuests()))} onClaim={id=>run(async()=>{const updated=await marketApi.claim(id);setState(updated);notify(`${updated.lastReward?.amount?.toLocaleString('ko-KR')||''} 코인 보상을 받았어요!`);await refreshProfile();})} notify={notify} busy={busy}/>}
           {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={(id,text,rating)=>run(async()=>{setState(await marketApi.review(id,text,rating,preferences.nickname));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');})}/>}
           {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={items=>order(items,true)} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
           </div>}

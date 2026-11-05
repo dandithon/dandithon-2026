@@ -8,7 +8,7 @@ function server(){
   const storage={getItem:()=>null,setItem:()=>{}};
   const request=async(path,options)=>{
     if(path==='/users/me/charge'){
-      calls++;assert.equal(options.method,'POST');assert.deepEqual(options.body,{amount:chargeAmount});
+      calls++;assert.equal(options.method,'POST');assert.deepEqual(Object.keys(options.body),['amount']);
       if(failure)throw Error('connection lost');
       balance+=options.body.amount;return {balance:invalid?'invalid':balance};
     }
@@ -59,4 +59,10 @@ test('offline charge remains local and does not create an order',async()=>{
   assert.equal(after.state.balance,before.balance+chargeAmount);
   assert.deepEqual(after.state.orders,before.orders);
   assert.equal((await marketApi.load()).balance,after.state.balance);
+});
+
+test('live charge sends selected custom and maximum amounts unchanged',async()=>{
+  const {market}=server();await market.load();
+  assert.equal((await market.charge(2500)).state.balance,3500);
+  assert.equal((await market.charge(10_000_000)).state.balance,10_003_500);
 });

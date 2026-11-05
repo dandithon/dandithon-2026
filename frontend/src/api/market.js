@@ -24,6 +24,12 @@ function syncQuests(s){
 // Replace these asynchronous adapter methods with the team's agreed server API.
 // This demo never submits a real order or charges money.
 export const marketApi={
+  async resetDemo(){
+    const previous=current();
+    state={...fresh(),balance:1000,orders:[],reviews:[],cart:[],visits:[],claimed:[],favorites:[...previous.favorites],dailyQuest:undefined,lastReward:null};
+    const result=save(current());
+    return {state:result,user:{balance:1000}};
+  },
   async charge(amount){validateCharge(amount);const s=current();if(!Number.isSafeInteger(s.balance+amount))throw Error('보유 코인을 확인해 주세요.');s.balance+=amount;return {state:save(s),user:{balance:s.balance}};},
   async syncBalance(){return {state:structuredClone(current()),user:{balance:current().balance}};},
   async load(){return structuredClone(current());},
@@ -49,6 +55,6 @@ export const marketApi={
     if(!Number.isInteger(rating)||rating<1||rating>5)throw Error('별점을 선택해 주세요.');
     order.status='reviewed';if(menu.find(m=>m.id===order.itemId).storeId==='seomun')current().dailyQuest.reviews++;current().reviews.unshift({id:crypto.randomUUID(),storeId:menu.find(m=>m.id===order.itemId).storeId,name:nickname,rating,text:text.trim(),date:new Intl.DateTimeFormat('ko-KR',{timeZone:'Asia/Seoul'}).format(new Date()),photos:false});return save(current());
   },
-  async claim(id){const s=current(),quest=s.quests.daily.find(q=>q.id===id);if(quest?.status!=='COMPLETED')throw Error('아직 받을 수 없는 보상이에요.');s.dailyQuest.claimed.push(id);s.balance+=quest.rewardCoin;return save(s);},
+  async claim(id){const s=current(),quest=s.quests.daily.find(q=>q.id===id);if(quest?.status!=='COMPLETED')throw Error('아직 받을 수 없는 보상이에요.');s.dailyQuest.claimed.push(id);s.balance+=quest.rewardCoin;s.lastReward={id,amount:quest.rewardCoin};return save(s);},
 };
 function validate(id,q){const item=menu.find(x=>x.id===id);if(!item||!Number.isInteger(q)||q<1||q>99)throw Error('메뉴와 수량을 확인해 주세요.');return item;}

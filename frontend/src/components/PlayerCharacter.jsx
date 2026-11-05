@@ -25,7 +25,7 @@ export default function PlayerCharacter({direction='up',equipped={},moving=false
     {slot:'feet',top:bodyEnd,bottom:0,worn:equipped.feet==='tteok-shoes'},
   ];
   const spriteStyle={width:'300%',height:'300%',maxWidth:'none',left:`-${frame*100}%`,top:`-${row*100}%`};
-  return <div role="img" aria-label={`승우 캐릭터 ${labels[direction]}${moving?' 걷는 중':''}`} className="player-character relative size-full pointer-events-none" data-direction={direction} data-moving={moving} data-frame={frame} data-equipment={Object.values(equipped).sort().join(',')}>
+  return <div role="img" aria-label={`승우 캐릭터 ${labels[direction]}${moving?' 걷는 중':''}`} className="player-character relative size-full pointer-events-none" data-direction={direction} data-moving={moving} data-frame={frame} data-equipment={Object.values(equipped).filter(Boolean).sort().join(',')}>
     {/* Lift only near-black pixels toward the original Figma brown outline. */}
     <svg aria-hidden="true" width="0" height="0" className="absolute"><defs><filter id={paletteId} colorInterpolationFilters="sRGB" x="-10%" y="-10%" width="120%" height="120%">
       <feColorMatrix in="SourceGraphic" type="matrix" values="0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  -2 -2 -2 0 1" result="darkness"/>
