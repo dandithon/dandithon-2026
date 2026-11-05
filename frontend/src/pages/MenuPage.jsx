@@ -8,7 +8,7 @@ export default function MenuPage({store,state,tab,setTab,onBack,onFavorite,onSel
   const [dragOffset,setDragOffset]=useState(0);
   const reviews=state.reviews.filter(r=>r.storeId===store.id);
   return <section className={`relative size-full overflow-hidden ${embedded?'':'bg-paper'}`} aria-label={`${store.name} 메뉴와 리뷰`}>
-    {!embedded&&<StoreScene store={store} onBack={onBack} onFavorite={onFavorite} favorite={state.favorites.includes(store.id)} screen={tab==='reviews'?'85:581':'75:189'} dim/>}
+    {!embedded&&<StoreScene store={store} onBack={onBack} onFavorite={onFavorite} favorite={state.favorites.includes(store.id)} favoritesSupported={state.favoritesSupported} screen={tab==='reviews'?'85:581':'75:189'} dim/>}
     <section style={{height:embedded?'100%':Math.max(370,Math.min(652,652-dragOffset))}} className="absolute inset-x-0 bottom-0 flex h-[652px] flex-col rounded-t-[30px] bg-paper">
       {embedded?<div className="h-[40px] shrink-0"/>:<SheetHandle onDrag={setDragOffset} expanded onToggle={onBack}/>}
       <nav className="mt-[28px] grid shrink-0 grid-cols-4 gap-[7px] px-[20px]" aria-label="가게 상세 탭">
