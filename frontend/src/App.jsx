@@ -53,7 +53,7 @@ export default function App(){
       const style=getComputedStyle(element);
       const inset=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom);
       const visible=window.visualViewport;
-      // svh reserves expanded browser chrome. VisualViewport also handles browsers
+      // Dynamic viewport units track browser chrome. VisualViewport also handles browsers
       // whose visible area is smaller. Keep layout stable during keyboard entry/zoom.
       const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
       const visibleHeight=!typing&&visible?.scale===1?Math.min(element.clientHeight,visible.height):element.clientHeight;
@@ -173,7 +173,7 @@ export default function App(){
           {modal&&<div key={modal} data-modal={modal} inert={closing?true:undefined} className={`modal-motion absolute inset-0 z-30 ${closing?'is-closing':''}`}>
           {modal==='coins'&&<CoinDialog balance={state.balance} busy={busy} live={live} onClose={close} onCharge={updateCoins} onCheckBalance={()=>updateCoins()} onReset={resetDemo} onReload={reloadAll}/>}
           {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} onHome={()=>{setModal(null);setLocationPreview(null);setPage('start');}} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={equip} onDeleteReview={deleteReview} onRefreshReviews={refreshReviews} onOpenFavorite={openFavorite} onRefreshFavorites={refreshFavorites} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
-          {modal==='map'&&<FullMapDialog onClose={close}/>}
+          {modal==='map'&&<FullMapDialog zones={state.zones} notify={notify} onClose={close} onReturn={()=>{close();setPage('market');setLocationPreview(null);setToast('');}}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
           {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
