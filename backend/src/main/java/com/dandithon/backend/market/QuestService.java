@@ -13,31 +13,50 @@ public class QuestService {
     private final ReviewRepository reviews;
     private final QuestClaimRepository claims;
     private final UserRepository users;
-    private final Clock clock;
-    public QuestService(ReviewRepository reviews,QuestClaimRepository claims,UserRepository users,Clock clock) {
-        this.reviews=reviews;this.claims=claims;this.users=users;this.clock=clock;
+    private final DailyActivityService activities;
+    private final MarketCatalog catalog;
+    public QuestService(ReviewRepository reviews,QuestClaimRepository claims,UserRepository users,DailyActivityService activities,MarketCatalog catalog) {
+        this.reviews=reviews;this.claims=claims;this.users=users;this.activities=activities;this.catalog=catalog;
     }
     public record Quest(String id,String title,long current,int target,int rewardCoin,String status,boolean verificationPending) {}
     public record ClaimResult(String questId,int rewardCoin,long currentBalance) {}
-    private LocalDate today() {return LocalDate.now(clock.withZone(ZoneId.of("Asia/Seoul")));}
-    private String claimId(LocalDate day) {return "1:review-1:"+day;}
-    private long reviewCount(LocalDate day) {return reviews.countByUserIdAndStoreIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(1,"seomun",day.atStartOfDay(),day.plusDays(1).atStartOfDay());}
+    private record Definition(String id,String title,int target,int reward) {}
+    private static final List<Definition> DAILY=List.of(
+        new Definition("visit-3","가게 3곳 둘러보기",3,300),
+        new Definition("review-1","서문분식 리뷰 1개 작성하기",1,200),
+        new Definition("equip-hat","모자 착용해보기",1,100));
+    private String claimId(String questId,LocalDate day) {return "1:"+questId+":"+day;}
+    private long current(String questId,LocalDate day) {
+        return switch(questId) {
+            case "visit-3" -> activities.count(1,day,DailyActivityService.BROWSE_STORE);
+            case "equip-hat" -> activities.count(1,day,DailyActivityService.WEAR_HAT);
+            case "review-1" -> reviews.countByUserIdAndStoreIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(1,"seomun",day.atStartOfDay(),day.plusDays(1).atStartOfDay());
+            default -> throw ApiException.invalid("퀘스트를 찾을 수 없어요.");
+        };
+    }
     public Map<String,Object> list() {
-        LocalDate day=today();long count=reviewCount(day);
-        String status=claims.existsById(claimId(day))?"CLAIMED":count>=2?"COMPLETED":"IN_PROGRESS";
-        return Map.of("daily",List.of(
-            new Quest("visit-3","서문시장 가게 3곳 방문하기",0,3,300,"IN_PROGRESS",true),
-            new Quest("review-1","서문 분식 방문 후 리뷰 작성하기",Math.min(count,2),2,200,status,false),
-            new Quest("photo-1","사진 1장 찍기",0,1,100,"IN_PROGRESS",true)),
-            "achievement",List.of(),"event",List.of());
+        LocalDate day=activities.today();
+        var daily=DAILY.stream().map(def->{
+            long count=current(def.id(),day);
+            String status=claims.existsById(claimId(def.id(),day))?"CLAIMED":count>=def.target()?"COMPLETED":"IN_PROGRESS";
+            return new Quest(def.id(),def.title(),Math.min(count,def.target()),def.target(),def.reward(),status,false);
+        }).toList();
+        return Map.of("daily",daily,"achievement",List.of(),"event",List.of());
+    }
+    @Transactional
+    public Map<String,Object> browse(String storeId) {
+        catalog.store(storeId);
+        users.findForUpdate(1).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));
+        activities.record(1,DailyActivityService.BROWSE_STORE,storeId);
+        return list();
     }
     @Transactional
     public ClaimResult claim(String questId) {
-        if(!List.of("visit-3","review-1","photo-1").contains(questId))throw ApiException.invalid("퀘스트를 찾을 수 없어요.");
+        var def=DAILY.stream().filter(d->d.id().equals(questId)).findFirst().orElseThrow(()->ApiException.invalid("퀘스트를 찾을 수 없어요."));
         var user=users.findForUpdate(1).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));
-        LocalDate day=today();
-        if(!"review-1".equals(questId)||reviewCount(day)<2||claims.existsById(claimId(day)))throw new ApiException("QUEST_NOT_COMPLETED","완료되지 않았거나 이미 보상을 받은 미션이에요.",HttpStatus.BAD_REQUEST);
-        claims.save(new QuestClaim(claimId(day)));user.reward(200);
-        return new ClaimResult(questId,200,user.getBalance());
+        LocalDate day=activities.today();
+        if(current(questId,day)<def.target()||claims.existsById(claimId(questId,day)))throw new ApiException("QUEST_NOT_COMPLETED","완료되지 않았거나 이미 보상을 받은 미션이에요.",HttpStatus.BAD_REQUEST);
+        claims.save(new QuestClaim(claimId(questId,day)));user.reward(def.reward());
+        return new ClaimResult(questId,def.reward(),user.getBalance());
     }
 }

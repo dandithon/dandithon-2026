@@ -71,7 +71,7 @@ export default function App(){
     if(profile){setPreferences(profile);setState(current=>({...current,balance:profile.balance}));}
   };
   const openModal=name=>{
-    if(live && name==='quests')return run(async()=>{setState(await marketApi.refreshQuests());setModal(name);});
+    if(name==='quests')return run(async()=>{setState(await marketApi.refreshQuests());setModal(name);});
     if(live && name==='profile')return run(async()=>{await refreshProfile();setModal(name);});
     setModal(name);
   };

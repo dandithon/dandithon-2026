@@ -1,5 +1,6 @@
 package com.dandithon.backend.profile;
 import com.dandithon.backend.common.ApiException;
+import com.dandithon.backend.market.DailyActivityService;
 import com.dandithon.backend.user.*;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -10,7 +11,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfileService {
     private final UserRepository users;
     private final FoodProgressRepository progress;
-    public ProfileService(UserRepository users,FoodProgressRepository progress) { this.users=users;this.progress=progress; }
+    private final DailyActivityService activities;
+    public ProfileService(UserRepository users,FoodProgressRepository progress,DailyActivityService activities) { this.users=users;this.progress=progress;this.activities=activities; }
     private GuestUser user(boolean write) {
         return (write?users.findForUpdate(1):users.findById(1L)).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));
     }
@@ -47,7 +49,9 @@ public class ProfileService {
         GuestUser u=user(true);
         long count=progress.findByUserIdAndFoodId(u.getId(),item.foodId()).map(FoodProgress::getPurchaseCount).orElse(0L);
         if(count<item.required())throw new ApiException("EQUIPMENT_LOCKED","아직 획득하지 않은 장비예요.",HttpStatus.BAD_REQUEST);
-        u.toggle(item.slot(),id);return new EquippedView(equipped(u));
+        u.toggle(item.slot(),id);
+        if("tteok-hat".equals(id)&&id.equals(u.getEquipped().get("head")))activities.record(u.getId(),DailyActivityService.WEAR_HAT,id);
+        return new EquippedView(equipped(u));
     }
     public record BadgeView(String tier,String name,int required,boolean earned) {}
     public record NextBadgeView(String tier,String name,long remainingCount) {}

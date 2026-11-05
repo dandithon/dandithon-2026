@@ -64,6 +64,7 @@ export function createLiveApi(request, storage) {
     },
     async refreshQuests(){setQuests(await request('/quests'));return snapshot();},
     async visit(id){
+      setQuests(await request('/stores/'+encodeURIComponent(id)+'/browse',{method:'POST'}));
       if(!local.visits.includes(id))local.visits.push(id);
       persist();return snapshot();
     },

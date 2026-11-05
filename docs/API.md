@@ -94,6 +94,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | 영수증 목록 조회 | `GET` | `/api/v1/orders/receipts` | 내 영수증 및 조리 상태 확인 |
 | 가게 리뷰 목록 | `GET` | `/api/v1/stores/{storeId}/reviews` | 가게별 작성된 리뷰 조회 |
 | 리뷰 작성 | `POST` | `/api/v1/reviews` | 조리 완료 주문 건 리뷰 작성 |
+| 가게 둘러보기 기록 | `POST` | `/api/v1/stores/{storeId}/browse` | 가게 상세 진입 시 당일 고유 가게 집계 |
 | 퀘스트 목록 조회 | `GET` | `/api/v1/quests` | 일일 미션/퀘스트/이벤트 목록 |
 | 퀘스트 보상 수령 | `POST` | `/api/v1/quests/{questId}/claim` | 완료된 퀘스트 코인 수령 |
 
@@ -568,10 +569,14 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 
 ### 4.13 퀘스트 목록 조회
 
-- 일일 기준은 **한국시간 자정**이다. 리뷰 등록 날짜 기준으로 당일 서문분식 리뷰 2개를 작성하면 `review-1`이 완료되며 200코인을 한 번 수령할 수 있다.
+- 일일 기준은 **한국시간 자정**이다. 리뷰 등록 날짜 기준으로 당일 서문분식 리뷰 1개를 작성하면 `review-1`이 완료되며 200코인을 한 번 수령할 수 있다.
 - `status`: `IN_PROGRESS`, `COMPLETED`, `CLAIMED`. 다음 날에는 진행도가 0부터 계산되고 다시 수령할 수 있다. 이전 날짜 보상은 이월되지 않는다.
-- 방문·사진 미션은 인증 기능 연결 전까지 `current: 0`, `status: IN_PROGRESS`, `verificationPending: true`이며 보상 수령 불가다. 구매·가상 이동·리뷰 이미지 주소를 방문/촬영 인증으로 사용하지 않는다. 리뷰 미션의 `verificationPending`은 false다.
-- 아래 예시는 응답 구조 설명용이다. 기존 예시의 사진 완료 상태는 현재 구현에서는 제공하지 않는다.
+- `visit-3`: **가게 3곳 둘러보기**, 당일 서로 다른 가게 상세 화면 3곳 진입 시 300코인. 실제 위치/방문 인증이 아니다. 동일 가게 재진입은 1곳으로 집계한다.
+- `review-1`: **서문분식 리뷰 1개 작성하기**, 당일 서문분식 리뷰 등록 성공 시 200코인. 다른 가게 리뷰는 제외한다.
+- `equip-hat`: **모자 착용해보기**, 당일 잠금 해제된 `tteok-hat` 착용 성공 시 100코인. 구매/획득만으로 완료되지 않으며, 해제해도 완료 기록은 유지한다. 전날부터 착용 중이어도 다음 날 자동 완료하지 않는다. 해제 후 재착용이 필요하다.
+- 세 미션은 각각 한국시간 자정에 초기화하고 하루 한 번 수령한다. `verificationPending`은 모두 false다. 조회만으로 행동 기록을 생성하지 않는다.
+- 기존 `visit-3`, `review-1` ID는 유지한다. `photo-1`은 삭제하고 `equip-hat`으로 대체한다. 기존 리뷰 보상 수령 기록은 유지하므로 조건 완화로 당일 보상이 재지급되지 않는다.
+- 프론트는 서버가 반환한 제목/목표/진행도를 사용한다. 모자 착용 후 퀘스트를 다시 조회한다. 문서 예시는 형식 설명이며 초기 상태는 모두 0이다.
 
 - **Method**: `GET`
 - **Endpoint**: `/api/v1/quests`
@@ -583,7 +588,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
     "daily": [
       {
         "id": "visit-3",
-        "title": "서문시장 가게 3곳 방문하기",
+        "title": "가게 3곳 둘러보기",
         "current": 1,
         "target": 3,
         "rewardCoin": 300,
@@ -591,20 +596,20 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
       },
       {
         "id": "review-1",
-        "title": "서문 분식 방문 후 리뷰 작성하기",
+        "title": "서문분식 리뷰 1개 작성하기",
         "current": 1,
-        "target": 2,
+        "target": 1,
         "rewardCoin": 200,
-        "status": "IN_PROGRESS"
+        "status": "COMPLETED"
       },
       {
-        "id": "photo-1",
-        "title": "사진 1장 찍기",
+        "id": "equip-hat",
+        "title": "모자 착용해보기",
         "current": 0,
         "target": 1,
         "rewardCoin": 100,
         "status": "IN_PROGRESS",
-        "verificationPending": true
+        "verificationPending": false
       }
     ],
     "achievement": [],
@@ -640,3 +645,13 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 - 샘플 리뷰·주문·방문 기록을 실제 DB 초기 데이터로 생성하지 않는다. 위 응답 예시의 주문 번호/평점/진행도는 예시이며 API 실제 값이 우선이다.
 - FE는 아직 localStorage Mock API를 사용한다. 이번 작업은 서버 API 구현이며 FE HTTP 연결은 별도다. 특히 혼합 가게 장바구니를 가게별 요청으로 나누고 필수 Idempotency-Key를 전달해야 한다.
 - 전 API는 인증 없는 공용 게스트 userId 1이다. 실제 서비스 공개 전 사용자별 인증·데이터 분리가 필요하다.
+
+
+### 가게 둘러보기 기록 (2026-11-05)
+- **Method**: `POST`
+- **Endpoint**: `/api/v1/stores/{storeId}/browse`
+- 요청 본문 없음. 가게 상세 진입 이벤트마다 호출한다. 같은 날 같은 가게는 중복 집계하지 않는다.
+- 응답: HTTP 200, `data`는 `GET /quests`와 같은 `daily`, `achievement`, `event` 구조다. 프론트는 반환값으로 퀘스트 상태를 갱신한다.
+- 잘못된 가게는 `STORE_NOT_FOUND`(404). 실패 시 가게 진입을 성공 처리하지 않고 재시도할 수 있다.
+- GPS 좌표나 실제 위치를 받지 않는다. 현재 공용 게스트 기준이며, 접속자별 독립 진행도는 사용자 구분 기능 도입 후 가능하다.
+- 백엔드 V3 마이그레이션과 browse API를 먼저 배포한 뒤 프론트를 배포한다. 구 버전 서버는 이 경로가 없으므로 새 프론트의 가게 진입이 실패한다.
