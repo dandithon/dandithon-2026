@@ -5,7 +5,7 @@ import {Art,ArtButton} from './Art';
 export default function OrderDialog({item,onClose,onOrder,onAdd,busy}){
   const [quantity,setQuantity]=useState(1);
   return <Dialog label={`${item.name} 주문`} onClose={onClose}>
-    <section className="absolute left-[18px] top-[202px] h-[431px] w-[366px] rounded-[30px] bg-[#be9e7c]">
+    <section className="absolute left-[18px] top-1/2 -translate-y-1/2 h-[431px] w-[366px] rounded-[30px] bg-[#be9e7c]">
       {item.featured&&<span className="absolute left-[29px] top-[19px] rounded-[5px] bg-[#c85a43] px-[13px] py-[4px] text-[12px] text-white">대표</span>}
       <div className="absolute right-[19px] top-[10px]"><ArtButton screen="85:390" name="imgImage51" width={40} height={39} label="주문 창 닫기" onClick={onClose}/></div>
       <div className="absolute inset-x-0 bottom-0 h-[286px] rounded-[30px] bg-[#eae1d0] shadow-[0_4px_4px_#0004,inset_0_4px_4px_#0004]"/>

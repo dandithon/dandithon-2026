@@ -8,9 +8,9 @@
 @font-face { font-family: 'Mona12'; src: url('/fonts/Mona12TextKR-Bold.woff2') format('woff2'); font-weight: 700; font-display: swap; }
 @theme {
   --font-sans: 'Pretendard', sans-serif;
-  --font-pixel: 'Galmuri9', monospace;
+  --font-pixel: 'NeoDunggeunmo', 'Galmuri9', monospace;
   --font-retro: 'NeoDunggeunmo', 'Galmuri9', monospace;
-  --font-mona: 'Mona12', monospace;
+  --font-mona: 'NeoDunggeunmo', 'Galmuri9', monospace;
   --color-paper: #f9ebd8;
   --color-ink: #3d2b21;
   --color-muted: #8b7563;
@@ -18,7 +18,9 @@
 @layer base {
   html { background: #202822; color: var(--color-ink); }
   body { margin: 0; min-width: 280px; }
-  button { cursor: pointer; }
+  button { cursor: pointer; font-family: var(--font-retro); }
+  h1, h2, h3 { font-family: var(--font-retro); }
+  input, textarea, select { font-family: var(--font-sans); }
   button:disabled { cursor: not-allowed; }
   button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid #2672c9; outline-offset: 2px; }
   img { user-select: none; }
@@ -30,7 +32,7 @@ button:not(.dialog-backdrop) { transition: opacity 90ms ease, scale 90ms ease; }
 button:not(:disabled):not(.dialog-backdrop):active { opacity: .82; scale: .97; }
 .hud-action::after { content: ''; position: absolute; inset: 0; border-radius: 16px; background: #21170f; opacity: 0; pointer-events: none; transition: opacity 90ms ease; }
 .hud-action:active::after { opacity: .18; }
-.dialog-surface > * { pointer-events: auto; }
+.dialog-surface > :not(.pointer-events-none) { pointer-events: auto; }
 .dialog-backdrop { animation: ui-fade-in 160ms ease-out both; }
 .dialog-surface { transform-origin: 50% 65%; animation: ui-panel-in 190ms cubic-bezier(.2,.7,.2,1) both; }
 .modal-motion[data-modal='profile'] .dialog-surface { transform-origin: 88px 80px; animation-name: ui-profile-in; }
@@ -38,6 +40,8 @@ button:not(:disabled):not(.dialog-backdrop):active { opacity: .82; scale: .97; }
 .modal-motion.is-closing .dialog-surface { animation: ui-panel-out 140ms ease-in both; }
 .modal-motion.is-closing[data-modal='profile'] .dialog-surface { animation-name: ui-profile-out; }
 .scene-enter { animation: ui-fade-in 180ms ease-out both; }
+.store-spotlight { animation: store-location-pulse 1100ms ease-in-out 3; }
+@keyframes store-location-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
 @keyframes ui-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ui-fade-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes ui-panel-in { from { opacity: 0; transform: translateY(12px) scale(.985); } to { opacity: 1; transform: none; } }
@@ -47,12 +51,20 @@ button:not(:disabled):not(.dialog-backdrop):active { opacity: .82; scale: .97; }
 @media (prefers-reduced-motion: reduce) {
   button:not(.dialog-backdrop), .hud-action::after { transition: none; }
   button:not(:disabled):not(.dialog-backdrop):active { scale: 1; }
-  .dialog-backdrop, .dialog-surface, .scene-enter { animation: none !important; }
+  .dialog-backdrop, .dialog-surface, .scene-enter, .store-spotlight { animation: none !important; }
 }
 
-.app-shell { box-sizing: border-box; height: 100vh; height: 100svh; display: flex; flex-direction: column; max-width: 402px; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
-.app-shell > footer { flex-shrink: 0; }
+.app-shell { box-sizing: border-box; height: 100vh; height: 100svh; height: 100dvh; display: flex; flex-direction: column; max-width: 402px; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+/* Shared parchment track and wood-colored thumb for every scrollable panel. */
+.app-shell, .app-shell * { scrollbar-width: thin; scrollbar-color: #a5784d #f0e2cc; }
+.app-shell ::-webkit-scrollbar { width: 8px; height: 8px; }
+.app-shell ::-webkit-scrollbar-track { background: #f0e2cc; border-radius: 8px; }
+.app-shell ::-webkit-scrollbar-thumb { background: #a5784d; border: 2px solid #f0e2cc; border-radius: 8px; }
+.app-shell ::-webkit-scrollbar-thumb:hover { background: #805532; }
+.app-shell ::-webkit-scrollbar-corner { background: transparent; }
+.app-shell ::-webkit-scrollbar-button { display: none; }
 .market-bottom-control { transform: translateY(var(--controls-shift, 0px)); }
+.map-world { will-change: transform; backface-visibility: hidden; }
 @media (max-width: 600px) and (orientation: portrait) {
   .app-shell { max-width: none; }
 }
