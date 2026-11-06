@@ -11,7 +11,7 @@ import tools.jackson.databind.ObjectMapper;
 @Component
 public class MarketCatalog {
     public record Menu(String storeId,String id,String name,long price,String description,boolean isFeatured,String imageUrl) {}
-    public record Store(String id,String name,String category,String description,String greeting,List<String> tags,int waitTimeMinutes,List<Menu> menus) {}
+    public record Store(String id,String name,String category,String description,String greeting,String location,String businessHours,String phone,List<String> tags,int waitTimeMinutes,List<Menu> menus) {}
     private final List<Store> stores;
     public MarketCatalog(ObjectMapper mapper) throws IOException {
         try(var input=new ClassPathResource("market-catalog.json").getInputStream()) {

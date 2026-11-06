@@ -22,7 +22,25 @@ export default function MenuPage({store,state,tab,setTab,onBack,onFavorite,onSel
         </article>)}</div>}
         {tab==='reviews'&&<div className="px-[4px]">{reviews.length===0&&<p className="py-8 text-center text-sm text-muted">아직 리뷰가 없어요. 첫 후기를 남겨 주세요!</p>}{reviews.map(review=><StoreReviewCard key={review.id} review={review}/>)}</div>}
         {tab==='summary'&&<div className="rounded-xl border border-[#d8bfa2] bg-[#fff1de] p-6"><h2 className="font-semibold">AI 요약 준비 중</h2><p className="mt-3 text-sm leading-6 text-muted">백엔드의 리뷰 요약 기능이 연결되면 이곳에서 확인할 수 있어요.</p></div>}
-        {tab==='info'&&<div className="rounded-xl border border-[#d8bfa2] bg-[#fff1de] p-6"><h2 className="font-semibold">{store.name}</h2><p className="mt-3 text-sm leading-6">{store.description}</p><p className="mt-4 text-sm text-muted">영업시간과 상세 위치는 아직 등록되지 않았어요.</p>{store.waitTimeSource==='SYNTHETIC_DEMO_QUEUE'&&<p className="mt-4 rounded-lg bg-[#f5e4c6] p-3 text-xs leading-5 text-[#805532]">AI 대기시간은 합성 주문으로 만든 가상 일반 손님의 시연 정보예요. 실제 손님 수나 실매장 대기시간이 아니며, 사용자 시연 주문은 별도로 우선 처리돼요.</p>}</div>}
+        {tab==='info'&&<div className="rounded-xl border border-[#d8bfa2] bg-[#fff1de] p-6">
+          <h2 className="text-[17px] font-semibold text-[#4a3022]">{store.name}</h2>
+          <p className="mt-3 text-sm leading-6 text-[#594536]">{store.description}</p>
+          <div className="mt-5 space-y-2 border-t border-[#d8bfa2] pt-4 text-sm text-[#4a3022]">
+            <div className="flex items-start gap-2">
+              <span className="shrink-0 font-medium text-[#7a583d]">🕒 영업시간</span>
+              <span>{store.businessHours || '09:00 ~ 19:00 (매달 1, 3번째 일요일 휴무)'}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="shrink-0 font-medium text-[#7a583d]">📍 상세위치</span>
+              <span>{store.location || '서문시장 2지구'}</span>
+            </div>
+            {store.phone&&<div className="flex items-start gap-2">
+              <span className="shrink-0 font-medium text-[#7a583d]">📞 전화번호</span>
+              <span>{store.phone}</span>
+            </div>}
+          </div>
+          {store.waitTimeSource==='SYNTHETIC_DEMO_QUEUE'&&<p className="mt-4 rounded-lg bg-[#f5e4c6] p-3 text-xs leading-5 text-[#805532]">AI 대기시간은 합성 주문으로 만든 가상 일반 손님의 시연 정보예요. 실제 손님 수나 실매장 대기시간이 아니며, 사용자 시연 주문은 별도로 우선 처리돼요.</p>}
+        </div>}
       </div>
     </section>
     {tab==='reviews'&&<div className="absolute bottom-[15px] right-[14px]"><ArtButton screen="85:581" name="imgImage59" width={75} height={80} label="리뷰 작성하기" onClick={onReview} className="drop-shadow-md"/></div>}
