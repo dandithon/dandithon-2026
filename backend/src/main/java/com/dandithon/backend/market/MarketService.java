@@ -31,7 +31,7 @@ public class MarketService {
     public record ReviewView(String id,String authorName,int rating,String text,String date,boolean photos,List<String> imageUrls) {}
     public record ReviewResult(String reviewId,String orderId,int rating,String text,String authorName,String date) {}
     public record StoreSummary(String id,String name,String category,int waitTimeMinutes,String crowdLevel,String crowdLabel,int npcCount,List<String> tags,boolean mock) {}
-    public record StoreDetail(String id,String name,String category,String description,String greeting,double rating,int reviewCount,List<String> tags,List<MarketCatalog.Menu> menus,boolean mock) {}
+    public record StoreDetail(String id,String name,String category,String description,String greeting,String location,String businessHours,String phone,double rating,int reviewCount,List<String> tags,List<MarketCatalog.Menu> menus,boolean mock) {}
     public static String crowd(int minutes) {return minutes<5?"CALM":minutes<10?"NORMAL":minutes<20?"CROWDED":"VERY_CROWDED";}
     public List<StoreSummary> stores() {
         return catalog.stores().stream().map(s->{
@@ -44,7 +44,7 @@ public class MarketService {
     public StoreDetail store(String id) {
         var s=catalog.store(id);var all=reviews.findByStoreIdOrderByCreatedAtDescIdDesc(id);
         double rating=all.stream().mapToInt(r->r.rating).average().orElse(0);
-        return new StoreDetail(s.id(),s.name(),s.category(),s.description(),s.greeting(),Math.round(rating*10)/10.0,all.size(),s.tags(),s.menus(),true);
+        return new StoreDetail(s.id(),s.name(),s.category(),s.description(),s.greeting(),s.location(),s.businessHours(),s.phone(),Math.round(rating*10)/10.0,all.size(),s.tags(),s.menus(),true);
     }
     @Transactional
     public OrderResult order(OrderRequest request,String key) {
