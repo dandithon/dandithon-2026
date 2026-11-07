@@ -14,7 +14,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | Base URL | `http://localhost:8080/api/v1` (배포 시 도메인 교체) |
 | 통신 형식 | JSON (`application/json; charset=UTF-8`) |
 | 문자 인코딩 | UTF-8 |
-| 인증 방식 (MVP) | 단일 게스트 유저 자동 로그인 (`userId: 1`, 닉네임: '승우', 기본 코인: 1,000) |
+| 인증 및 사용자 세션 (MVP) | `X-User-Id` (또는 `X-Guest-Id`) 헤더 기반 다중 게스트 격리 지원 (생략 시 기본값: `1`, 닉네임: '승우', 기본 코인: 1,000). 신규 ID 전달 시 자동 프로비저닝되어 독립된 잔액/주문/진행도를 가집니다. |
 | 날짜/시간 형식 | ISO 8601 (`yyyy-MM-dd'T'HH:mm:ss`) |
 
 ### 핵심 비즈니스 규칙

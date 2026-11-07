@@ -23,8 +23,9 @@ public class ReviewPhotoService {
     public record Uploaded(String id,String url) {}
     @Transactional
     public Uploaded upload(String orderId,MultipartFile file){
-        users.findForUpdate(1).orElseThrow(()->ApiException.invalid("사용자를 확인해 주세요."));
-        var order=orders.findById(orderId).filter(o->o.userId==1).orElseThrow(()->ApiException.invalid("사진을 첨부할 주문을 확인해 주세요."));
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
+        users.findForUpdate(currentUserId).orElseThrow(() -> ApiException.invalid("사용자를 확인해 주세요."));
+        var order=orders.findById(orderId).filter(o->o.userId==currentUserId).orElseThrow(()->ApiException.invalid("사진을 첨부할 주문을 확인해 주세요."));
         if(!"ready".equals(order.status(now())))throw ApiException.invalid("리뷰를 작성할 수 있는 주문에 사진을 첨부해 주세요.");
         photos.deleteByReviewIdIsNullAndCreatedAtBefore(now().minusHours(24));
         if(photos.count()>=200||photos.countByOrderIdAndReviewIdIsNull(orderId)>=20)throw ApiException.invalid("사진 저장 공간이 부족해요. 사진 없이 등록하거나 잠시 후 다시 시도해 주세요.");
@@ -58,6 +59,7 @@ public class ReviewPhotoService {
     @Transactional(readOnly=true)
     public byte[] read(String id){return photos.findById(id).orElseThrow(()->new ApiException("PHOTO_NOT_FOUND","사진을 찾을 수 없어요.",HttpStatus.NOT_FOUND)).data;}
     @Transactional public void deleteForReview(String id){photos.deleteByReviewId(id);}
+    @Transactional public void deleteForOrders(Collection<String> orderIds){if(orderIds!=null&&!orderIds.isEmpty())photos.deleteByOrderIdIn(orderIds);}
     @Transactional public void reset(){photos.deleteAll();}
     @Transactional
     public void attach(java.util.List<String> urls,String orderId,String reviewId){
