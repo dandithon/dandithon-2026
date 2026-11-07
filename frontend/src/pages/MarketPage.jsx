@@ -47,6 +47,7 @@ export default function MarketPage({state,onStore,onModal,notify,overlay,active=
     </button>
     <button aria-label="코인 충전 열기" onClick={()=>onModal('coins')} className="hud-action absolute left-[345px] top-[65px] size-[44px]"/>
     <button aria-label="프로필 보기" onClick={()=>onModal('profile')} className="hud-action absolute left-[5px] top-[47px] h-[71px] w-[178px]"/>
+    <button aria-label="발표 시연 컨트롤러 열기" onClick={()=>onModal('demo')} className="absolute left-[190px] top-[50px] z-20 flex h-[26px] items-center gap-1 rounded-full border-2 border-[#80502c] bg-[#ffeecb] px-2.5 font-retro text-[10px] text-[#513724] shadow-md hover:bg-[#ffdc8a] active:translate-y-0.5">🛠️ DEMO</button>
     <button aria-label="이동 조작 표시" aria-pressed={joystick} onClick={()=>setJoystick(x=>!x)} className="market-bottom-control absolute left-[306px] top-[761px] h-[63px] w-[93px]"/>
     {!joystick&&<GpsStatus gps={gps} onJoystick={()=>setJoystick(true)}/>}
     {joystick&&<div role="group" aria-label="이동 조이스틱" tabIndex={0} className="market-bottom-control absolute left-[17px] top-[665px] size-[160px] touch-none select-none rounded-full focus-visible:outline-2 focus-visible:outline-blue-500" {...stickHandlers}><span className="sr-only">드래그하여 이동. 키보드는 방향키 또는 WASD.</span></div>}

@@ -19,6 +19,7 @@ export const explorationApi={
   async load(){return read();},
   async resetPreferences(){return write(initial());},
   async rename(nickname){const value=nickname.trim();if(!value||[...value].length>8)throw Error('닉네임은 1~8자로 입력해 주세요.');return write({...read(),nickname:value});},
+  async gainExp(amount=50){return read();},
   async equip(id){
     const preferences=read(),state=await marketApi.load();
     const item=progression(state,preferences).items.find(i=>i.id===id);
