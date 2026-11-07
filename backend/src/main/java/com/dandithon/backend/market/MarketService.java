@@ -59,8 +59,9 @@ public class MarketService {
             if(quantities.putIfAbsent(item.menuId(),item.quantity())!=null)throw ApiException.invalid("같은 메뉴는 한 행에 수량을 합쳐 주세요.");
         }
         String signature=store.id()+":"+quantities;
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
         var user=lockedUser();
-        var prior=orders.findByUserIdAndRequestKey(1,key);
+        var prior=orders.findByUserIdAndRequestKey(currentUserId,key);
         if(prior.isPresent()) {
             if(!prior.get().requestSignature.equals(signature))throw ApiException.invalid("이미 다른 주문에 사용된 키예요.");
             return orderResult(prior.get());
@@ -69,9 +70,9 @@ public class MarketService {
         long total=lines.stream().mapToLong(l->l.price*l.quantity).sum();
         user.spend(total);
         user.gainExp(Math.max(10L, total / 10L));
-        var order=new GameOrder("ord-"+UUID.randomUUID(),store,key,signature,total,user.getBalance(),now(),lines);
+        var order=new GameOrder("ord-"+UUID.randomUUID(),currentUserId,store,key,signature,total,user.getBalance(),now(),lines);
         orders.save(order);
-        for(var line:lines)progress.recordSuccessfulPurchase(1,order.id+":"+line.menuId,line.menuId);
+        for(var line:lines)progress.recordSuccessfulPurchase(currentUserId,order.id+":"+line.menuId,line.menuId);
         return orderResult(order);
     }
     private OrderResult orderResult(GameOrder order) {
@@ -80,7 +81,8 @@ public class MarketService {
     }
     public List<Receipt> receipts() {
         LocalDateTime time=now();
-        return orders.findByUserIdOrderByOrderedAtDescIdDesc(1).stream().flatMap(o->o.lines.stream().map(l->new Receipt(o.id,o.storeId,o.storeName,l.menuId,l.menuName,l.quantity,o.status(time),"ready".equals(o.status(time)),o.orderedAt))).toList();
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
+        return orders.findByUserIdOrderByOrderedAtDescIdDesc(currentUserId).stream().flatMap(o->o.lines.stream().map(l->new Receipt(o.id,o.storeId,o.storeName,l.menuId,l.menuName,l.quantity,o.status(time),"ready".equals(o.status(time)),o.orderedAt))).toList();
     }
     public List<ReviewView> reviews(String storeId) {
         catalog.store(storeId);
@@ -98,8 +100,9 @@ public class MarketService {
             try {var uri=URI.create(url);if(!((url.startsWith("/assets/")||url.startsWith(ReviewPhotoService.PREFIX))&&!url.contains("..")||("https".equals(uri.getScheme())&&uri.getHost()!=null)))throw new IllegalArgumentException();}
             catch(IllegalArgumentException e){throw ApiException.invalid("이미지는 /assets/ 경로나 HTTPS 주소만 허용해요.");}
         }
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
         var user=lockedUser();
-        var order=orders.findById(request.orderId()).filter(o->o.userId==1).orElseThrow(()->new ApiException("ORDER_NOT_FOUND","주문을 찾을 수 없어요.",HttpStatus.NOT_FOUND));
+        var order=orders.findById(request.orderId()).filter(o->o.userId==currentUserId).orElseThrow(()->new ApiException("ORDER_NOT_FOUND","주문을 찾을 수 없어요.",HttpStatus.NOT_FOUND));
         if(!"ready".equals(order.status(now())))throw new ApiException("INVALID_ORDER_STATUS","조리 완료 주문에 리뷰를 한 번만 작성할 수 있어요.",HttpStatus.BAD_REQUEST);
         var review=new GameReview(order,user.getNickname(),request.rating(),text,images,now());
         photos.attach(images,order.id,review.id);
@@ -114,7 +117,8 @@ public class MarketService {
         }
         var review = reviews.findById(reviewId)
             .orElseThrow(() -> new ApiException("REVIEW_NOT_FOUND", "리뷰를 찾을 수 없어요.", HttpStatus.NOT_FOUND));
-        if (review.userId != 1L) {
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
+        if (review.userId != currentUserId) {
             throw new ApiException("FORBIDDEN", "본인이 작성한 리뷰만 삭제할 수 있어요.", HttpStatus.FORBIDDEN);
         }
         if (review.orderId != null) {
@@ -124,7 +128,10 @@ public class MarketService {
         reviews.delete(review);
         return new ReviewDeleteResult(reviewId, true);
     }
-    GuestUser lockedUser() {return users.findForUpdate(1).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));}
+    GuestUser lockedUser() {
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
+        return users.findForUpdate(currentUserId).orElseThrow(() -> new ApiException("USER_NOT_FOUND", "사용자를 찾을 수 없어요.", HttpStatus.NOT_FOUND));
+    }
     LocalDateTime now() {return LocalDateTime.now(clock.withZone(ZoneId.of("Asia/Seoul")));}
     private String date(LocalDateTime time) {return time.format(DateTimeFormatter.ofPattern("yyyy. MM. dd"));}
 }

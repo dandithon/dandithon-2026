@@ -25,20 +25,21 @@ public class QuestService {
         new Definition("visit-3","가게 3곳 둘러보기",3,300),
         new Definition("review-1","서문분식 리뷰 1개 작성하기",1,200),
         new Definition("equip-hat","모자 착용해보기",1,100));
-    private String claimId(String questId,LocalDate day) {return "1:"+questId+":"+day;}
-    private long current(String questId,LocalDate day) {
+    private String claimId(long userId,String questId,LocalDate day) {return userId+":"+questId+":"+day;}
+    private long current(long userId,String questId,LocalDate day) {
         return switch(questId) {
-            case "visit-3" -> activities.count(1,day,DailyActivityService.BROWSE_STORE);
-            case "equip-hat" -> activities.count(1,day,DailyActivityService.WEAR_HAT);
-            case "review-1" -> reviews.countByUserIdAndStoreIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(1,"seomun",day.atStartOfDay(),day.plusDays(1).atStartOfDay());
+            case "visit-3" -> activities.count(userId,day,DailyActivityService.BROWSE_STORE);
+            case "equip-hat" -> activities.count(userId,day,DailyActivityService.WEAR_HAT);
+            case "review-1" -> reviews.countByUserIdAndStoreIdAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(userId,"seomun",day.atStartOfDay(),day.plusDays(1).atStartOfDay());
             default -> throw ApiException.invalid("퀘스트를 찾을 수 없어요.");
         };
     }
     public Map<String,Object> list() {
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
         LocalDate day=activities.today();
         var daily=DAILY.stream().map(def->{
-            long count=current(def.id(),day);
-            String status=claims.existsById(claimId(def.id(),day))?"CLAIMED":count>=def.target()?"COMPLETED":"IN_PROGRESS";
+            long count=current(currentUserId,def.id(),day);
+            String status=claims.existsById(claimId(currentUserId,def.id(),day))?"CLAIMED":count>=def.target()?"COMPLETED":"IN_PROGRESS";
             return new Quest(def.id(),def.title(),Math.min(count,def.target()),def.target(),def.reward(),status,false);
         }).toList();
         return Map.of("daily",daily,"achievement",List.of(),"event",List.of());
@@ -46,17 +47,19 @@ public class QuestService {
     @Transactional
     public Map<String,Object> browse(String storeId) {
         catalog.store(storeId);
-        users.findForUpdate(1).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));
-        activities.record(1,DailyActivityService.BROWSE_STORE,storeId);
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
+        users.findForUpdate(currentUserId).orElseThrow(() -> new ApiException("USER_NOT_FOUND", "사용자를 찾을 수 없어요.", HttpStatus.NOT_FOUND));
+        activities.record(currentUserId,DailyActivityService.BROWSE_STORE,storeId);
         return list();
     }
     @Transactional
     public ClaimResult claim(String questId) {
         var def=DAILY.stream().filter(d->d.id().equals(questId)).findFirst().orElseThrow(()->ApiException.invalid("퀘스트를 찾을 수 없어요."));
-        var user=users.findForUpdate(1).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
+        var user=users.findForUpdate(currentUserId).orElseThrow(() -> new ApiException("USER_NOT_FOUND", "사용자를 찾을 수 없어요.", HttpStatus.NOT_FOUND));
         LocalDate day=activities.today();
-        if(current(questId,day)<def.target()||claims.existsById(claimId(questId,day)))throw new ApiException("QUEST_NOT_COMPLETED","완료되지 않았거나 이미 보상을 받은 미션이에요.",HttpStatus.BAD_REQUEST);
-        claims.save(new QuestClaim(claimId(questId,day)));user.reward(def.reward());
+        if(current(currentUserId,questId,day)<def.target()||claims.existsById(claimId(currentUserId,questId,day)))throw new ApiException("QUEST_NOT_COMPLETED","완료되지 않았거나 이미 보상을 받은 미션이에요.",HttpStatus.BAD_REQUEST);
+        claims.save(new QuestClaim(claimId(currentUserId,questId,day), currentUserId));user.reward(def.reward());
         return new ClaimResult(questId,def.reward(),user.getBalance());
     }
 }
