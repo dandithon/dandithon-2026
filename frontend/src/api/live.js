@@ -39,6 +39,11 @@ export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl) {
       const result=await request('/users/me/nickname',{method:'PATCH',body:{nickname}});
       preferences={...preferences,...result};
       return preferences;
+    },
+    async gainExp(amount=50){
+      const user=await request('/users/me/exp',{method:'POST',body:{exp:amount}});
+      preferences={...preferences,...user};
+      return preferences;
     }
   };
   const market={

@@ -18,6 +18,7 @@ import ReceiptDialog from './components/ReceiptDialog';
 import QuestDialog from './components/QuestDialog';
 import PurchaseComplete from './components/PurchaseComplete';
 import {ReviewEditor,CartDialog} from './components/ExtraDialogs';
+import DemoDialog from './components/DemoDialog';
 import {getStore,menu} from './api/catalog';
 import {storeLocations} from './game/storeLocation';
 
@@ -181,6 +182,16 @@ export default function App(){
   const add=(id,q)=>run(async()=>{setState(await marketApi.addToCart(id,q));setModal(null);notify('메뉴를 담았어요. 화면 아래에서 담은 메뉴를 확인하세요.');});
   const openReview=id=>run(async()=>{const data=await marketApi.refreshOrders();setState(data);const ready=data.orders.find(o=>(o.canReview??o.status==='ready')&&(id?o.id===id:menu.find(m=>m.id===o.itemId)?.storeId===storeId));if(!ready){notify('리뷰 작성이 가능한 주문이 없어요. 영수증을 확인해 주세요.');return;}setStoreId(menu.find(m=>m.id===ready.itemId).storeId);setReviewOrder(ready.id);setModal('review');});
   const toMenu=next=>navigate({tab:next,page:'menu'});
+  const gainExp=amount=>run(async()=>{
+    const updated=await explorationApi.gainExp(amount);
+    setPreferences(updated);
+    if(updated?.level>preferences?.level)notify(`레벨 업! 레벨 ${updated.level}이 되었어요.`);
+  });
+  const visitAll=()=>run(async()=>{
+    await marketApi.visit('seomun');
+    await marketApi.visit('noodle');
+    setState(await marketApi.visit('hotteok'));
+  });
   return <div ref={container} className="app-shell mx-auto w-full">
     <main className="relative mx-auto shrink-0 overflow-hidden shadow-2xl" style={{height:sceneHeight*scale,width:402*scale}}>
       <div className="absolute left-0 top-0 w-[402px] origin-top-left bg-paper font-sans" style={{height:sceneHeight,transform:`scale(${scale})`,'--controls-shift':`${sceneHeight-874}px`}}>
@@ -200,6 +211,7 @@ export default function App(){
           {modal==='quests'&&<QuestDialog state={state} onClose={close} onRefresh={()=>run(async()=>setState(await marketApi.refreshQuests()))} onClaim={id=>run(async()=>{const updated=await marketApi.claim(id);setState(updated);notify(`${updated.lastReward?.amount?.toLocaleString('ko-KR')||''} 코인 보상을 받았어요!`);await refreshProfile();})} notify={notify} busy={busy}/>}
           {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={saveReview} onUpload={marketApi.uploadReviewPhoto} photoSupported={state.features?.photoUpload}/>}
           {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={items=>order(items,true)} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
+          {modal==='demo'&&<DemoDialog state={state} preferences={preferences} busy={busy} live={live} onClose={close} onCharge={updateCoins} onGainExp={gainExp} onReset={resetDemo} onReload={reloadAll} onVisitAll={visitAll} notify={notify}/>}
           </div>}
         </>}
         {readyAlert&&!modal&&<div role="status" className="absolute inset-x-4 top-4 z-50 flex items-start gap-2 rounded-xl border-2 border-[#d78a29] bg-[#fff4df] p-4 text-[#513724] shadow-xl">
