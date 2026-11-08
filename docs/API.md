@@ -22,8 +22,8 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 2. **보상 카운트 반영 시점**: `POST /api/v1/orders` (코인 결제 성공) 즉시 해당 음식의 누적 횟수가 증가하고 장비/배지 달성 조건이 갱신됩니다.
 3. **장비 획득 기준 (Figma 반영)**: 1회(모자), 3회(자켓), 5회(신발), 8회(목도리)
 4. **배지 획득 기준 (PRD 반영)**: 3회(브론즈), 5회(실버), 10회(골드)
-5. **조리 상태 3단계**: `cooking`(조리 중) → `ready`(조리 완료) → `reviewed`(리뷰 작성 완료)
-   - 조리 완료(`ready`) 상태의 주문만 리뷰 작성이 활성화됩니다.
+5. **영수증 표시 상태**: `cooking`(조리 중), `ready`(조리 완료), `reviewed`(리뷰 작성 완료). 조리 중에도 리뷰 작성 시 `reviewed`로 표시하며, 실제 시연 대기열은 별도 완료 시각을 따른다.
+   - 주문 성공 직후부터 리뷰를 작성할 수 있습니다. 조리 완료 여부와 무관하며 주문당 리뷰 1개만 허용합니다.
 6. **혼잡도 구간 (`~이상 ~미만`)**:
    - `0분 이상 5분 미만`: 여유 (NPC 1~2명)
    - `5분 이상 10분 미만`: 보통 (NPC 3~5명)
@@ -66,7 +66,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | `MENU_NOT_FOUND` | 404 | 메뉴를 찾을 수 없음 |
 | `ORDER_NOT_FOUND` | 404 | 주문 건을 찾을 수 없음 |
 | `INSUFFICIENT_BALANCE` | 400 | 코인 잔액 부족 |
-| `INVALID_ORDER_STATUS` | 400 | 조리 완료 상태가 아닌 주문에 리뷰 작성 시도 등 |
+| `INVALID_ORDER_STATUS` | 400 | 이미 리뷰가 작성된 주문에 중복 리뷰 작성 시도 등 |
 | `EQUIPMENT_LOCKED` | 400 | 아직 획득하지 않은 장비 착용 시도 |
 | `QUEST_NOT_COMPLETED` | 400 | 아직 완료되지 않았거나 이미 수령한 퀘스트 보상 요청 |
 | `INTERNAL_SERVER_ERROR` | 500 | 서버 내부 오류 |
@@ -98,7 +98,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 | 코인 결제 및 주문 | `POST` | `/api/v1/orders` | 코인 차감, 주문 생성, 횟수 반영 |
 | 영수증 목록 조회 | `GET` | `/api/v1/orders/receipts` | 내 영수증 및 조리 상태 확인 |
 | 가게 리뷰 목록 | `GET` | `/api/v1/stores/{storeId}/reviews` | 가게별 작성된 리뷰 조회 |
-| 리뷰 작성 | `POST` | `/api/v1/reviews` | 조리 완료 주문 건 리뷰 작성 |
+| 리뷰 작성 | `POST` | `/api/v1/reviews` | 주문 성공 직후 리뷰 작성 (주문당 1개) |
 | 리뷰 삭제 | `DELETE` | `/api/v1/reviews/{reviewId}` | 작성한 리뷰 삭제 및 주문 상태 복구 |
 | 가게 둘러보기 기록 | `POST` | `/api/v1/stores/{storeId}/browse` | 가게 상세 진입 시 당일 고유 가게 집계 |
 | 퀘스트 목록 조회 | `GET` | `/api/v1/quests` | 일일 미션/퀘스트/이벤트 목록 |
@@ -616,7 +616,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
         "menuName": "떡볶이",
         "quantity": 1,
         "status": "cooking",
-        "canReview": false,
+        "canReview": true,
         "orderedAt": "2026-11-01T13:00:00"
       },
       {
@@ -681,7 +681,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 
 ### 4.12 리뷰 작성
 
-주문 전체당 1개만 작성한다. 별점은 정수 1~5, 내용은 앞뒤 공백 제거 후 Unicode 코드포인트 1~500자다. `imageUrls`는 생략 또는 빈 배열을 허용하며 최대 5개, 각 2,048자 이내의 `/assets/` 경로, HTTPS 주소 또는 아래 업로드 API가 발급한 `/api/v1/review-photos/{id}` 경로를 받는다. 업로드 경로는 해당 주문에 업로드한 미사용 사진만 연결할 수 있다. 아직 조리 중이거나 이미 리뷰를 작성한 주문에는 `INVALID_ORDER_STATUS`를 반환한다. 리뷰 별점·개수는 저장된 리뷰에서 계산하며 최초에는 0이다. 작성자 닉네임은 작성 당시 값으로 보관한다.
+주문 전체당 1개만 작성한다. 별점은 정수 1~5, 내용은 앞뒤 공백 제거 후 Unicode 코드포인트 1~500자다. `imageUrls`는 생략 또는 빈 배열을 허용하며 최대 5개, 각 2,048자 이내의 `/assets/` 경로, HTTPS 주소 또는 아래 업로드 API가 발급한 `/api/v1/review-photos/{id}` 경로를 받는다. 업로드 경로는 해당 주문에 업로드한 미사용 사진만 연결할 수 있다. 이미 리뷰를 작성한 주문에는 `INVALID_ORDER_STATUS`를 반환한다. 리뷰 별점·개수는 저장된 리뷰에서 계산하며 최초에는 0이다. 작성자 닉네임은 작성 당시 값으로 보관한다.
 
 - **Method**: `POST`
 - **Endpoint**: `/api/v1/reviews`
@@ -825,3 +825,66 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 - 백엔드 V3 마이그레이션과 browse API를 먼저 배포한 뒤 프론트를 배포한다. 구 버전 서버는 이 경로가 없으므로 새 프론트의 가게 진입이 실패한다.
 
 시연 초기화(`POST /api/v1/demo/reset`) 시 `daily_activities`의 가게 둘러보기·모자 착용 기록도 삭제한다. 기존 주문·리뷰·수령 내역과 함께 초기화하므로 당일 미션은 진행도 0으로 돌아가며, 새 행동으로 다시 완료할 수 있다.
+
+## 서문분식 AI 가상 대기열 / 사용자 즉시 완료 (2026-11-05)
+
+### 사용자 주문
+`POST /api/v1/orders`로 성공한 사용자 주문은 **모든 가게에서 시연용 우선 처리로 즉시 조리 완료**한다. `status=ready`, `readyAfterSeconds=0`이며 영수증 `canReview=true`다. 주문당 리뷰 1개·입력 검증·코인 차감·구매 집계·멱등성은 유지한다. 리뷰 작성 후 false, 삭제 후 다시 true다. 조리 상태와 무관하게 리뷰를 허용한다.
+
+사용자 주문은 아래 가상 일반 대기열에 추가되지 않는다. “일반 주문의 AI 예상 대기시간”과 “시연 사용자 즉시 완료”를 구분한다. 기존 DB 주문의 V5 완료 시각은 소급 변경하지 않는다.
+
+### 가상 일반 주문 생성
+`POST /api/v1/demo/seomun/queue/seed` (본문 없음)
+
+기존 가상 대기열을 **교체**하고 튀김·떡볶이·순대·튀김·오뎅·떡볶이·튀김 각 1개, 총 7건을 넣는다. 학습 모델의 준비시간을 순서대로 더한 약 19.9분 → NPC 7명. 실제 손님 7명이 아니라 대기시간 3분당 1명의 시각적 표시다. 중복/동시 요청도 7건만 유지되며, 의도적인 재호출은 시연 시계를 새로 시작한다. 사용자 주문·코인·경험치·리뷰·미션을 변경하지 않는다. 자동 생성/자동 재시드는 없다.
+
+### 가상 대기열 조회
+`GET /api/v1/stores/seomun/eta`
+
+```json
+{
+  "success":true,
+  "data":{
+    "storeId":"seomun",
+    "activeOrders":7,
+    "waitTimeMinutes":19.95,
+    "npcCount":7,
+    "source":"SYNTHETIC_DEMO_QUEUE",
+    "modelVersion":"seomun-rf-synthetic-v1",
+    "synthetic":true,
+    "secondsPerSimulatedMinute":60,
+    "appliedToOrders":false
+  },
+  "error":null
+}
+```
+
+예시는 seed 직후의 값이며 실제 시간 경과에 따라 달라진다. `waitTimeMinutes`는 가상 일반 주문을 모두 처리하기까지 남은 가상 분이다. NPC는 0분 0명, 양수 ceil(분/3), 최대 10명. activeOrders는 남은 가상 주문 수로 NPC 수와 항상 같지는 않다. `appliedToOrders=false`는 사용자 주문에 이 ETA를 적용하지 않음을 뜻한다.
+
+### 가상 일반 주문의 추가 견적
+`POST /api/v1/stores/seomun/eta`
+
+```json
+{"items":[{"menuId":"tteok","quantity":1},{"menuId":"fried","quantity":1}]}
+```
+
+새 일반 주문을 넣는다는 가정으로 `queueWaitMinutes`, 모델의 `preparationMinutes`, 합계 `estimatedMinutes`, 배속을 적용한 `readyAfterSeconds`, 해당 견적의 `npcCount`와 모델/합성 메타데이터를 반환한다. **조회 전용이며 사용자 주문의 완료시간 견적이 아니다.** 실제 주문 생성/차감은 하지 않는다. 메뉴 1~4행, 수량 1~99 정수, 중복 메뉴 거부. 미지원 가게는 INVALID_INPUT_VALUE(400), 없는 가게 STORE_NOT_FOUND(404), 잘못된 메뉴 MENU_NOT_FOUND(404).
+
+### 초기화
+- `DELETE /api/v1/demo/seomun/queue`: 가상 일반 대기열만 비움. 사용자 주문/잔액은 유지.
+- 기존 `POST /api/v1/demo/reset`: 요청한 사용자 데이터만 초기화하고 공용 가상 일반 대기열은 유지.
+
+### 표시 / 설정 / FE 전달
+- `SEOMUN_ETA_ENABLED=true` 기본: `/stores`의 서문분식 대기시간·NPC 수는 가상 일반 대기열을 반영한다. false면 예전 고정 시연값 유지. 사용자 즉시 완료는 설정과 무관하다.
+- `SEOMUN_ETA_SECONDS_PER_MINUTE=60` 기본, 5로 설정하면 가상 1분을 실제 5초로 진행한다. 진행 중 설정 변경 후에는 seed를 다시 호출한다.
+- `/stores`의 서문분식 `waitTimeSource=SYNTHETIC_DEMO_QUEUE`, `synthetic=true`, `mock=true`, `modelVersion`, `secondsPerSimulatedMinute`를 제공한다. 타 가게의 고정 시연값은 유지한다.
+- 기존 FE는 서버 `npcCount`를 읽으므로 **seed 후 페이지 새로고침하면 7명 표시 가능**하다. 이번 작업에서 frontend 파일은 수정하지 않는다. 자동 갱신은 추후 폴링 연결 필요.
+- 화면/발표에서 일반 손님 줄은 “합성 데이터 기반 시연 대기열”, 사용자 주문은 “시연용 우선 즉시 완료”로 설명한다. 실제 매장 혼잡도나 실측 정확도로 주장하지 않는다.
+- V5 기존 주문 보존, V6 가상 일반 주문 전용 테이블. 운영 MariaDB 마이그레이션 및 seed는 배포 후 확인한다.
+
+### 리뷰
+주문 직후 canReview=true, 이미 리뷰가 있으면 false. 중복 리뷰는 INVALID_ORDER_STATUS(400). 리뷰 작성/삭제는 가상 대기열과 무관하다. 프론트의 기존 ready 제한은 신규 주문이 즉시 ready이므로 별도 수정 없이 통과한다.
+
+2026-11-08 통합 정책: 게스트 헤더 기반 사용자 격리와 사진 리뷰를 유지한다. 개인 `/demo/reset`은 본인 데이터만 초기화하며 공용 AI 줄은 변경하지 않는다. 공용 가상 줄은 명시적 `/demo/seomun/queue/seed` 또는 DELETE로 관리한다. 사용자 주문은 즉시 ready이며 즉시 리뷰 가능하다. cooking→ready 전환 알림은 신규 즉시 완료 주문에는 발생하지 않고 기존 주문 성공 안내를 사용한다.
+
+최신 main 프론트에는 시작 화면을 벗어나면 15초마다 /stores를 갱신하는 코드가 이미 포함되어 있다. 이번 통합에서 FE 변경 없이 AI 줄 갱신에 사용한다. 신규 즉시 완료 주문은 cooking→ready 전환이 없으므로 전환 알림을 별도 발생시키지 않고 기존 주문 성공 화면을 유지한다.

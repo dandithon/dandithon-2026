@@ -21,3 +21,8 @@ springdoc:
   swagger-ui:
     path: /swagger-ui.html
   paths-to-match: /api/v1/**
+
+# Separate fictional queue; new paid guest orders are always instantly ready.
+eta:
+  enabled: ${SEOMUN_ETA_ENABLED:true}
+  seconds-per-minute: ${SEOMUN_ETA_SECONDS_PER_MINUTE:60}

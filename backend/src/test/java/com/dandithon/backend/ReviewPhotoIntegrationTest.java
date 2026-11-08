@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.*;
 class ReviewPhotoIntegrationTest {
     @Autowired MarketService market;
     @Autowired ProfileService profile;
+    @Autowired SeomunEtaService eta;
     @Autowired ReviewPhotoRepository photos;
     @Autowired Be2IntegrationTest.TestClock clock;
     @LocalServerPort int port;
@@ -31,11 +32,12 @@ class ReviewPhotoIntegrationTest {
     @BeforeEach void reset(){clock.instant=Instant.parse("2026-11-03T03:00:00Z");profile.resetDemo();}
     String order(String key){var result=market.order(new MarketService.OrderRequest("seomun",List.of(new MarketService.ItemRequest("tteok",1))),key);clock.advance(16);return result.orderId();}
     byte[] png()throws Exception{var output=new ByteArrayOutputStream();ImageIO.write(new BufferedImage(40,30,BufferedImage.TYPE_INT_ARGB),"png",output);return output.toByteArray();}
-    HttpResponse<byte[]> upload(String orderId,byte[] bytes)throws Exception{
+    HttpResponse<byte[]> upload(String orderId,byte[] bytes)throws Exception{return upload(orderId,bytes,1);}
+    HttpResponse<byte[]> upload(String orderId,byte[] bytes,long guest)throws Exception{
         String boundary="PhotoTestBoundary";var body=new ByteArrayOutputStream();
         body.write(("--"+boundary+"\r\nContent-Disposition: form-data; name=\"orderId\"\r\n\r\n"+orderId+"\r\n--"+boundary+"\r\nContent-Disposition: form-data; name=\"file\"; filename=\"../../image.png\"\r\nContent-Type: image/png\r\n\r\n").getBytes(StandardCharsets.UTF_8));
         body.write(bytes);body.write(("\r\n--"+boundary+"--\r\n").getBytes(StandardCharsets.UTF_8));
-        return client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/v1/review-photos")).header("Content-Type","multipart/form-data; boundary="+boundary).POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray())).build(),HttpResponse.BodyHandlers.ofByteArray());
+        return client.send(HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/v1/review-photos")).header("X-User-Id",Long.toString(guest)).header("Content-Type","multipart/form-data; boundary="+boundary).POST(HttpRequest.BodyPublishers.ofByteArray(body.toByteArray())).build(),HttpResponse.BodyHandlers.ofByteArray());
     }
     String url(HttpResponse<byte[]> response){assertThat(response.statusCode()).as(new String(response.body(),StandardCharsets.UTF_8)).isEqualTo(200);return mapper.readTree(response.body()).path("data").path("url").asText();}
     @Test void phonePhotoUploadsRendersAndSurvivesReviewReloadThenDeletesWithReview()throws Exception{
@@ -49,11 +51,11 @@ class ReviewPhotoIntegrationTest {
         assertThat(market.reviews("seomun").getFirst().photos()).isTrue();
         market.deleteReview(review.reviewId());assertThat(photos.count()).isZero();
     }
-    @Test void rejectsNonImagesAndUnknownOrUnreadyOrders()throws Exception{
+    @Test void rejectsNonImagesAndUnknownOrdersButAcceptsImmediatePhotos()throws Exception{
         String order=order("invalid-photo");assertThat(upload(order,"<svg>bad</svg>".getBytes()).statusCode()).isEqualTo(400);
         assertThat(upload("unknown",png()).statusCode()).isEqualTo(400);
         var cooking=market.order(new MarketService.OrderRequest("seomun",List.of(new MarketService.ItemRequest("tteok",1))),"cooking");
-        assertThat(upload(cooking.orderId(),png()).statusCode()).isEqualTo(400);assertThat(photos.count()).isZero();
+        assertThat(upload(cooking.orderId(),png()).statusCode()).isEqualTo(200);assertThat(photos.count()).isEqualTo(1);
     }
     @Test void cannotAttachAnotherOrdersPhotoAndResetClearsStoredFiles()throws Exception{
         String first=order("first-photo"),url=url(upload(first,png())),second=order("second-photo");
@@ -61,4 +63,30 @@ class ReviewPhotoIntegrationTest {
         assertThat(market.reviews("seomun")).isEmpty();assertThat(photos.count()).isEqualTo(1);
         profile.resetDemo();assertThat(photos.count()).isZero();
     }
+    JsonNode guest(String method,String path,Object body,long id,int status)throws Exception {
+        var b=HttpRequest.newBuilder(URI.create("http://127.0.0.1:"+port+"/api/v1"+path)).header("X-User-Id",Long.toString(id)).header("Content-Type","application/json").header("Idempotency-Key","same-key");
+        var response=client.send(b.method(method,body==null?HttpRequest.BodyPublishers.noBody():HttpRequest.BodyPublishers.ofString(mapper.writeValueAsString(body))).build(),HttpResponse.BodyHandlers.ofString());
+        assertThat(response.statusCode()).as(response.body()).isEqualTo(status);return mapper.readTree(response.body()).path("data");
+    }
+    @Test void guestsKeepOwnInstantPhotoReviewsAndResetsNeverClearSharedAiQueue()throws Exception {
+        eta.seed();
+        var body=Map.of("storeId","seomun","items",List.of(Map.of("menuId","tteok","quantity",1)));
+        var one=guest("POST","/orders",body,91,200);var two=guest("POST","/orders",body,92,200);
+        assertThat(one.path("orderId").asText()).isNotEqualTo(two.path("orderId").asText());
+        assertThat(one.path("status").asText()).isEqualTo("ready");assertThat(two.path("readyAfterSeconds").asInt()).isZero();
+        String id=one.path("orderId").asText();
+        assertThat(upload(id,png(),92).statusCode()).isEqualTo(400);
+        String photo=url(upload(id,png(),91));
+        var review=Map.of("orderId",id,"rating",5,"text","즉시 사진 리뷰","imageUrls",List.of(photo));
+        guest("POST","/reviews",review,92,404);guest("POST","/reviews",review,91,201);
+        guest("POST","/reviews",review,91,400);
+        assertThat(guest("GET","/orders/receipts",null,92,200).path("receipts").size()).isEqualTo(1);
+        guest("POST","/demo/reset",null,92,200);
+        assertThat(photos.count()).isEqualTo(1);assertThat(eta.queue("seomun").activeOrders()).isEqualTo(7);
+        assertThat(guest("GET","/orders/receipts",null,91,200).path("receipts").size()).isEqualTo(1);
+        guest("POST","/demo/reset",null,91,200);
+        assertThat(photos.count()).isZero();assertThat(eta.queue("seomun").activeOrders()).isEqualTo(7);
+        eta.clear();
+    }
+
 }

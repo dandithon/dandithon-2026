@@ -5,3 +5,6 @@ data/
 *.log
 .idea/
 *.iml
+ml/.venv/
+ml/artifacts/
+__pycache__/

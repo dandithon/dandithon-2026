@@ -26,7 +26,7 @@ public class ReviewPhotoService {
         long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
         users.findForUpdate(currentUserId).orElseThrow(() -> ApiException.invalid("사용자를 확인해 주세요."));
         var order=orders.findById(orderId).filter(o->o.userId==currentUserId).orElseThrow(()->ApiException.invalid("사진을 첨부할 주문을 확인해 주세요."));
-        if(!"ready".equals(order.status(now())))throw ApiException.invalid("리뷰를 작성할 수 있는 주문에 사진을 첨부해 주세요.");
+        if(order.reviewed)throw ApiException.invalid("리뷰를 작성할 수 있는 주문에 사진을 첨부해 주세요.");
         photos.deleteByReviewIdIsNullAndCreatedAtBefore(now().minusHours(24));
         if(photos.count()>=200||photos.countByOrderIdAndReviewIdIsNull(orderId)>=20)throw ApiException.invalid("사진 저장 공간이 부족해요. 사진 없이 등록하거나 잠시 후 다시 시도해 주세요.");
         if(file==null||file.isEmpty()||file.getSize()>8*1024*1024)throw ApiException.invalid("사진은 한 장당 8MB 이하로 선택해 주세요.");
