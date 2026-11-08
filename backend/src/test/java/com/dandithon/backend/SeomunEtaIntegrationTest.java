@@ -127,7 +127,7 @@ class SeomunEtaIntegrationTest {
         buy("keep");data("DELETE","/demo/seomun/queue",null,null,200);
         assertThat(queue().path("activeOrders").asInt()).isZero();assertThat(jdbc.queryForObject("select count(*) from game_orders",Long.class)).isEqualTo(1);
         seed();data("POST","/demo/reset",null,null,200);
-        assertThat(queue().path("activeOrders").asInt()).isZero();assertThat(jdbc.queryForObject("select count(*) from game_orders",Long.class)).isZero();
+        assertThat(queue().path("activeOrders").asInt()).isEqualTo(7);assertThat(jdbc.queryForObject("select count(*) from game_orders",Long.class)).isZero();
     }
     @Test void npcBoundariesAreExplicit() {
         assertThat(SeomunEtaService.npcCount(0)).isZero();assertThat(SeomunEtaService.npcCount(3)).isEqualTo(1);

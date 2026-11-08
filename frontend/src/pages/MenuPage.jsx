@@ -1,5 +1,6 @@
 import React,{useState} from 'react';
 import SheetHandle from '../components/SheetHandle';
+import StoreReviewCard from '../components/StoreReviewCard';
 import MenuImage from '../components/MenuImage';
 import StoreScene from '../components/StoreScene';
 import {Art,ArtButton} from '../components/Art';
@@ -8,7 +9,7 @@ export default function MenuPage({store,state,tab,setTab,onBack,onFavorite,onSel
   const [dragOffset,setDragOffset]=useState(0);
   const reviews=state.reviews.filter(r=>r.storeId===store.id);
   return <section className={`relative size-full overflow-hidden ${embedded?'':'bg-paper'}`} aria-label={`${store.name} 메뉴와 리뷰`}>
-    {!embedded&&<StoreScene store={store} onBack={onBack} onFavorite={onFavorite} favorite={state.favorites.includes(store.id)} screen={tab==='reviews'?'85:581':'75:189'} dim/>}
+    {!embedded&&<StoreScene store={store} onBack={onBack} onFavorite={onFavorite} favorite={state.favorites.includes(store.id)} favoritesSupported={state.favoritesSupported} screen={tab==='reviews'?'85:581':'75:189'} dim/>}
     <section style={{height:embedded?'100%':Math.max(370,Math.min(652,652-dragOffset))}} className="absolute inset-x-0 bottom-0 flex h-[652px] flex-col rounded-t-[30px] bg-paper">
       {embedded?<div className="h-[40px] shrink-0"/>:<SheetHandle onDrag={setDragOffset} expanded onToggle={onBack}/>}
       <nav className="mt-[28px] grid shrink-0 grid-cols-4 gap-[7px] px-[20px]" aria-label="가게 상세 탭">
@@ -19,12 +20,27 @@ export default function MenuPage({store,state,tab,setTab,onBack,onFavorite,onSel
           <button onClick={()=>onSelect(item)} aria-label={`${item.name} 상세 보기`} className="relative h-[80px] w-[109px] shrink-0 rounded-[10px] bg-[#efe2ce]"><span className="absolute left-[3px]" style={{top:({tteok:-1,sundae:-2,fried:5,fish:4})[item.id]??4}}><MenuImage item={item} width={98} height={72}/></span></button>
           <div className="min-w-0 flex-1 pt-[8px]"><div className="flex items-center gap-[6px]"><h2 className="text-[16px] font-semibold leading-[15px]">{item.name}</h2>{item.featured&&<span className="rounded-[5px] bg-[#c85a43] px-[8px] py-[2px] text-[11px] text-white">대표</span>}</div><p className="mt-[10px] break-words text-[11px] leading-[15px] text-muted">{item.description}</p><div className="mt-[1px] flex items-center justify-between"><span className="-ml-[3px] flex items-center font-retro text-[16px]"><Art screen="75:189" name="imgImage36" width={24} height={23}/>{item.price}</span><ArtButton screen="75:189" name="imgImage37" width={80} height={40} label={`${item.name} 담기`} onClick={()=>onSelect(item)}>담기</ArtButton></div></div>
         </article>)}</div>}
-        {tab==='reviews'&&<div className="px-[4px]">{reviews.length===0&&<p className="py-8 text-center text-sm text-muted">아직 리뷰가 없어요. 첫 후기를 남겨 주세요!</p>}{reviews.map(review=><article key={review.id} className="relative min-h-[269px] border-t border-[#d8bfa2] pt-[18px]">
-          <div className="flex gap-[10px]"><Art screen="85:581" name="imgImage52" width={70} height={63} className="-ml-[1px] -scale-x-100"/><div className="flex-1 pt-[13px]"><div className="flex items-center justify-between pr-[14px]"><h2 className="text-[17px] font-medium leading-[15px]">{review.name}</h2><time className="text-[12px] text-muted">{review.date}</time></div>{review.photos&&!review.imageUrls?<Art screen="85:581" name="imgImage32" width={103} height={34} className="-ml-[13px]"/>:<p className="py-2 text-amber-600" aria-label={`${review.rating}점`}>{'★'.repeat(review.rating)}{'☆'.repeat(5-review.rating)}</p>}<p className="whitespace-pre-line text-[12px] leading-[15px] text-[#4a372b]">{review.text}</p></div></div>
-          {review.imageUrls?.map((url,i)=><img key={i} src={url} alt="리뷰 사진" className="mt-2 max-h-[140px] max-w-full object-contain"/>)}{review.photos&&!review.imageUrls&&<Art screen="85:581" name="imgImage54" width={280} height={103} className="ml-[52px] mt-[11px]"/>}
-        </article>)}</div>}
+        {tab==='reviews'&&<div className="px-[4px]">{reviews.length===0&&<p className="py-8 text-center text-sm text-muted">아직 리뷰가 없어요. 첫 후기를 남겨 주세요!</p>}{reviews.map(review=><StoreReviewCard key={review.id} review={review}/>)}</div>}
         {tab==='summary'&&<div className="rounded-xl border border-[#d8bfa2] bg-[#fff1de] p-6"><h2 className="font-semibold">AI 요약 준비 중</h2><p className="mt-3 text-sm leading-6 text-muted">백엔드의 리뷰 요약 기능이 연결되면 이곳에서 확인할 수 있어요.</p></div>}
-        {tab==='info'&&<div className="rounded-xl border border-[#d8bfa2] bg-[#fff1de] p-6"><h2 className="font-semibold">{store.name}</h2><p className="mt-3 text-sm leading-6">{store.description}</p><p className="mt-4 text-sm text-muted">영업시간과 상세 위치는 아직 등록되지 않았어요.</p></div>}
+        {tab==='info'&&<div className="rounded-xl border border-[#d8bfa2] bg-[#fff1de] p-6">
+          <h2 className="text-[17px] font-semibold text-[#4a3022]">{store.name}</h2>
+          <p className="mt-3 text-sm leading-6 text-[#594536]">{store.description}</p>
+          <div className="mt-5 space-y-2 border-t border-[#d8bfa2] pt-4 text-sm text-[#4a3022]">
+            <div className="flex items-start gap-2">
+              <span className="shrink-0 font-medium text-[#7a583d]">🕒 영업시간</span>
+              <span>{store.businessHours || '09:00 ~ 19:00 (매달 1, 3번째 일요일 휴무)'}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <span className="shrink-0 font-medium text-[#7a583d]">📍 상세위치</span>
+              <span>{store.location || '서문시장 2지구'}</span>
+            </div>
+            {store.phone&&<div className="flex items-start gap-2">
+              <span className="shrink-0 font-medium text-[#7a583d]">📞 전화번호</span>
+              <span>{store.phone}</span>
+            </div>}
+          </div>
+          {store.waitTimeSource==='SYNTHETIC_DEMO_QUEUE'&&<p className="mt-4 rounded-lg bg-[#f5e4c6] p-3 text-xs leading-5 text-[#805532]">AI 대기시간은 합성 주문으로 만든 가상 일반 손님의 시연 정보예요. 실제 손님 수나 실매장 대기시간이 아니며, 사용자 시연 주문은 별도로 우선 처리돼요.</p>}
+        </div>}
       </div>
     </section>
     {tab==='reviews'&&<div className="absolute bottom-[15px] right-[14px]"><ArtButton screen="85:581" name="imgImage59" width={75} height={80} label="리뷰 작성하기" onClick={onReview} className="drop-shadow-md"/></div>}

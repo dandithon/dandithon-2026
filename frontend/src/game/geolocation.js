@@ -1,7 +1,10 @@
 import {playerOrigin} from './movement.js';
 // Three surveyed, non-collinear anchors are required. Never guess market coordinates.
 export function projectLocation(coords,calibration){
-  if(!calibration)return {status:'unmapped',point:null};
+  if(!calibration){
+    if(!Number.isFinite(coords?.latitude)||!Number.isFinite(coords?.longitude)||!Number.isFinite(coords?.accuracy)||coords.accuracy<0)return {status:'invalid-location',point:null};
+    return {status:coords.accuracy>50?'inaccurate':'unmapped',point:null};
+  }
   const {anchors,maxAccuracy}=calibration;
   if(!Array.isArray(anchors)||anchors.length!==3||!Number.isFinite(maxAccuracy)||maxAccuracy<=0)return {status:'invalid-config',point:null};
   if(!Number.isFinite(coords?.latitude)||!Number.isFinite(coords?.longitude)||!Number.isFinite(coords?.accuracy)||coords.accuracy<0)return {status:'invalid-location',point:null};

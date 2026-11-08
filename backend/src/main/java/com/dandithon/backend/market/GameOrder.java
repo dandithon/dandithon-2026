@@ -6,8 +6,8 @@ import java.util.*;
 
 @Entity @Table(name="game_orders",uniqueConstraints=@UniqueConstraint(columnNames={"user_id","request_key"}))
 public class GameOrder {
-    @Id @Column(length=64) String id;
-    @Column(name="user_id",nullable=false) long userId;
+    @Id @Column(length=64) public String id;
+    @Column(name="user_id",nullable=false) public long userId;
     @Column(name="store_id",nullable=false,length=64) String storeId;
     @Column(name="store_name",nullable=false,length=100) String storeName;
     @Column(name="request_key",nullable=false,length=128) String requestKey;
@@ -31,7 +31,10 @@ public class GameOrder {
     }
     protected GameOrder() {}
     GameOrder(String id,MarketCatalog.Store store,String key,String signature,long total,long balance,LocalDateTime now,List<Line> lines) {
-        this.id=id;userId=1;storeId=store.id();storeName=store.name();requestKey=key;requestSignature=signature;
+        this(id, 1L, store, key, signature, total, balance, now, lines);
+    }
+    GameOrder(String id,long userId,MarketCatalog.Store store,String key,String signature,long total,long balance,LocalDateTime now,List<Line> lines) {
+        this.id=id;this.userId=userId;storeId=store.id();storeName=store.name();requestKey=key;requestSignature=signature;
         totalPrice=total;remainingBalance=balance;orderedAt=now;readyAt=now;etaSecondsPerMinute=60;this.lines.addAll(lines);
     }
     String status(LocalDateTime now) {return reviewed?"reviewed":now.isBefore(readyAt==null?orderedAt.plusSeconds(15):readyAt)?"cooking":"ready";}

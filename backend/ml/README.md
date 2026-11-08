@@ -52,13 +52,13 @@ ml/.venv/bin/python ml/train_eta.py
 - AI 모델은 별도 `seomun_demo_queue`의 **가상 일반 주문**에만 사용한다. 사용자 잔액·영수증·리뷰·경험치·미션에 영향을 주지 않는다.
 - `POST /api/v1/demo/seomun/queue/seed`: 기존 가상 대기열을 교체해 7건을 넣는다. 튀김·떡볶이·순대·튀김·오뎅·떡볶이·튀김 각 1개. 모델 예측 합계 약 19.9분이므로 NPC 7명을 반환한다. 인원 숫자를 시간과 무관하게 강제로 고정하지 않는다.
 - `GET /api/v1/stores/seomun/eta`: 가상 대기 주문 수·남은 시연 분·NPC 수. `POST`는 해당 일반 대기열에 추가한다는 가정의 견적일 뿐 사용자 주문에는 적용되지 않는다. `appliedToOrders=false`는 사용자 주문 미적용을 뜻한다.
-- `DELETE /api/v1/demo/seomun/queue`: 가상 대기열만 제거, 사용자 주문 유지. 전체 `/demo/reset`은 사용자 데이터와 가상 대기열을 함께 초기화한다.
+- `DELETE /api/v1/demo/seomun/queue`: 가상 대기열만 제거, 사용자 주문 유지. 개인 `/demo/reset`은 본인 데이터만 초기화하고 공용 가상 대기열은 유지한다.
 - `SEOMUN_ETA_ENABLED=true` 기본: `/stores`에 가상 대기열 시간을 전달한다. false는 예전 고정 대기시간 표시로 되돌린다. 사용자 즉시 완료와는 독립적이다.
 - `SEOMUN_ETA_SECONDS_PER_MINUTE=60` 기본: 가상 1분당 실제 60초, 빠른 시연은 5로 설정할 수 있다. 허용 범위 1~60. 설정 변경 후 대기열을 다시 seed한다.
 - 자동으로 가상 주문을 생성하지 않는다. 화면 로드/서버 재시작은 데이터를 추가하거나 줄을 다시 채우지 않는다. seed를 호출한 경우에만 생성되고 시간이 지나면 비워진다.
-- 기존 FE는 서버 npcCount를 이미 사용하므로 seed 후 새로고침하면 7명이 표시된다. 자동 갱신은 FE 후속 작업이다. 현재 화면의 “시연 대기시간” 표시와 API의 `SYNTHETIC_DEMO_QUEUE`로 실제 매장 정보와 구분한다.
+- 기존 FE는 서버 npcCount를 이미 사용하므로 seed 후 새로고침하면 7명이 표시된다. 최신 main의 기존 프론트가 15초마다 /stores를 재조회한다. 현재 화면의 “시연 대기시간” 표시와 API의 `SYNTHETIC_DEMO_QUEUE`로 실제 매장 정보와 구분한다.
 - V5는 기존 주문의 완료시각을 보존하고 V6는 가상 대기열 전용 테이블만 추가한다. 운영 DB 적용 및 운영 seed는 배포 후 별도로 확인한다.
-- 공용 게스트 userId 1 정책은 유지된다. 사용자 분리 기능을 추가하지 않는다.
+- 최신 main의 게스트 헤더 기반 사용자 분리를 유지한다. 공용 AI 대기열만 모든 게스트가 함께 보며 개인 초기화와 분리한다.
 
 ## 참고 문서
 - [RandomForestRegressor 공식 문서](https://scikit-learn.org/1.6/modules/generated/sklearn.ensemble.RandomForestRegressor.html)

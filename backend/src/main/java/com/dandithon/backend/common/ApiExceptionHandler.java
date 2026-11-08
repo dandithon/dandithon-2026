@@ -12,12 +12,16 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 @RestControllerAdvice
 public class ApiExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    ResponseEntity<ApiResponse<Void>> tooLarge(Exception ex){return ResponseEntity.status(413).body(ApiResponse.fail("PHOTO_TOO_LARGE","사진은 한 장당 8MB 이하로 선택해 주세요."));}
+    @ExceptionHandler(org.springframework.web.multipart.support.MissingServletRequestPartException.class)
+    ResponseEntity<ApiResponse<Void>> missingFile(Exception ex){return ResponseEntity.badRequest().body(ApiResponse.fail("INVALID_INPUT_VALUE","첨부할 사진을 선택해 주세요."));}
     @ExceptionHandler(ApiException.class)
     ResponseEntity<ApiResponse<Void>> handle(ApiException ex) {
         return ResponseEntity.status(ex.status()).body(ApiResponse.fail(ex.code(), ex.getMessage()));
     }
     @ExceptionHandler({MethodArgumentNotValidException.class, HttpMessageNotReadableException.class,
-        MethodArgumentTypeMismatchException.class})
+        MethodArgumentTypeMismatchException.class,org.springframework.web.bind.MissingServletRequestParameterException.class})
     ResponseEntity<ApiResponse<Void>> invalid(Exception ex) {
         return ResponseEntity.badRequest().body(ApiResponse.fail("INVALID_INPUT_VALUE", "요청 값을 확인해 주세요."));
     }

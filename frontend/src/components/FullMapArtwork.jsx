@@ -1,7 +1,7 @@
 import React from 'react';
 import assets from '../assets/exploration.json';
 const {imgImage124,imgImage125,imgImage126,imgImage127,imgImage128}=assets.map;
-export default function FullMapArtwork({zones}) {
+export default function FullMapArtwork({zones,onZone}) {
   return (
     <div className="bg-white relative size-full" data-node-id="1:528" data-name="전체지도">
       <div className="absolute h-[874px] left-0 top-0 w-[402px]" data-node-id="1:529" data-name="image 124">
@@ -43,6 +43,10 @@ export default function FullMapArtwork({zones}) {
       <p className="[word-break:break-word] absolute font-sans leading-[15px] left-[251px] not-italic text-[#765849] text-[11px] top-[531px] tracking-[0.11px] whitespace-nowrap" data-node-id="1:541">
         {zones?(zones.find(z=>z.id==='zone-night')?.desc ? '('+zones.find(z=>z.id==='zone-night')?.desc+')' : ''):'(야간 먹거리)'}
       </p>
+      <button type="button" aria-label="1지구 안내" onClick={()=>onZone('zone-1')} className="absolute left-[19px] top-[132px] h-[101px] w-[156px] rounded-xl"/>
+      <button type="button" aria-label="2지구 시장으로 돌아가기" onClick={()=>onZone('zone-2')} className="absolute left-[210px] top-[154px] h-[99px] w-[152px] rounded-xl"/>
+      <button type="button" aria-label="동산상가 안내" onClick={()=>onZone('zone-dongsan')} className="absolute left-[19px] top-[320px] h-[105px] w-[161px] rounded-xl"/>
+      <button type="button" aria-label="야시장 안내" onClick={()=>onZone('zone-night')} className="absolute left-[207px] top-[481px] h-[101px] w-[156px] rounded-xl"/>
     </div>
   );
 }

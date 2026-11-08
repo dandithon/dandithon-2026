@@ -69,7 +69,15 @@ class Be2IntegrationTest {
         assertThat(MarketService.crowd(10)).isEqualTo("CROWDED");assertThat(MarketService.crowd(19)).isEqualTo("CROWDED");assertThat(MarketService.crowd(20)).isEqualTo("VERY_CROWDED");
         var menus=catalog.stores().stream().flatMap(s->s.menus().stream()).toList();
         assertThat(menus.stream().map(m->m.id()+":"+m.name())).containsExactlyInAnyOrderElementsOf(ProfileCatalog.FOODS.stream().map(f->f.id()+":"+f.name()).toList());
-        assertThat(get("/stores/seomun").path("reviewCount").asInt()).isZero();
+        var seomun=get("/stores/seomun");
+        assertThat(seomun.path("reviewCount").asInt()).isZero();
+        assertThat(seomun.path("location").asText()).isEqualTo("서문시장 2지구 101호");
+        assertThat(seomun.path("businessHours").asText()).contains("09:00 ~ 19:00");
+        assertThat(seomun.path("phone").asText()).isEqualTo("053-256-1011");
+        for(String storeId:List.of("seomun","noodle","hotteok","coffee")) {
+            assertThat(get("/stores/"+storeId).path("location").asText()).contains("2지구");
+            assertThat(get("/stores/"+storeId).path("businessHours").asText()).isNotEmpty();
+        }
         json(request("GET","/stores/missing",null,null),404);
         json(request("GET","/stores/missing/reviews",null,null),404);
     }

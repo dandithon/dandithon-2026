@@ -1,16 +1,16 @@
 import React from 'react';
 import PlayerCharacter from './PlayerCharacter';
-export default function MapArtwork({ assets, nickname = '승우', equipped = {}, balance = 1000, joystick = true, position = {x:0,y:0}, direction = 'up', moving = false, overlay = false, layer = 'hud', camera = {zoom:1,x:0,y:0}, stick = {x:0,y:0}, children }) {
+function MapArtwork({ assets, nickname = '승우', equipped = {}, balance = 1000, joystick = true, position = {x:0,y:0}, direction = 'up', moving = false, overlay = false, layer = 'hud', camera = {zoom:1,x:0,y:0}, stick = {x:0,y:0}, children }) {
   const { imgImage7, imgImage5, imgImage11, imgImage12, imgImage13, imgImage15, imgImage16, imgImage4, imgImage87, imgImage20 } = assets;
-  if(layer==='world')return <div className="absolute inset-0 origin-top-left" style={{transform:`translate(${camera.x}px, ${camera.y}px) scale(${camera.zoom})`}}>
+  if(layer==='world')return <div className="map-world absolute inset-0 origin-top-left" style={{transform:`translate3d(${camera.x}px, ${camera.y}px, 0) scale(${camera.zoom})`}}>
       <div className="absolute h-[875px] left-0 top-[-1px] w-[405px]" data-node-id="40:42" data-name="image 7">
         <img alt="" className="absolute inset-0 max-w-none object-cover pointer-events-none size-full" src={imgImage7} />
       </div>
-      <p className="[word-break:break-word] absolute font-pixel leading-[normal] left-[295px] not-italic text-[#302019] text-[13px] top-[509px] tracking-[-0.13px] whitespace-nowrap" style={{ top: overlay ? 517 : undefined }} data-node-id="40:111">
-        커피.디저트
+      <p className="[word-break:break-word] absolute font-pixel leading-[normal] left-[278px] w-[100px] text-center not-italic text-[#302019] text-[13px] top-[509px] tracking-[-0.13px] whitespace-nowrap" style={{ top: overlay ? 517 : undefined }} data-node-id="40:111">
+        골목카페
       </p>
-      <p className="[word-break:break-word] absolute font-pixel leading-[normal] left-[308px] not-italic text-[#302019] text-[13px] top-[153px] tracking-[-0.13px] whitespace-nowrap" style={{ top: overlay ? 169 : undefined }} data-node-id="40:113">
-        칼국수
+      <p className="[word-break:break-word] absolute font-pixel leading-[normal] left-[278px] w-[100px] text-center not-italic text-[#302019] text-[13px] top-[153px] tracking-[-0.13px] whitespace-nowrap" style={{ top: overlay ? 169 : undefined }} data-node-id="40:113">
+        시장칼국수
       </p>
       <div className="absolute contents left-[154px] top-[320px]" data-node-id="125:1136">
         <div className="absolute h-[86px] left-[154px] top-[320px] w-[97px]" style={{ transform: `translate(${position.x}px, ${position.y}px)` }} data-node-id="40:45" data-name="image 5">
@@ -20,8 +20,8 @@ export default function MapArtwork({ assets, nickname = '승우', equipped = {},
       <p className="[word-break:break-word] absolute font-pixel leading-[normal] left-[54px] not-italic text-[#302019] text-[13px] top-[153px] tracking-[-0.13px] whitespace-nowrap" style={{ top: overlay ? 169 : undefined }} data-node-id="40:47">
         서문분식
       </p>
-      <p className="[word-break:break-word] absolute font-pixel leading-[normal] left-[65px] not-italic text-[#302019] text-[13px] top-[509px] tracking-[-0.13px] whitespace-nowrap" style={{ top: overlay ? 517 : undefined }} data-node-id="40:109">
-        호떡
+      <p className="[word-break:break-word] absolute font-pixel leading-[normal] left-[32px] w-[100px] text-center not-italic text-[#302019] text-[13px] top-[509px] tracking-[-0.13px] whitespace-nowrap" style={{ top: overlay ? 517 : undefined }} data-node-id="40:109">
+        달콤호떡
       </p>
       <div className="absolute contents left-[168px] top-[383px]" data-node-id="125:1137">
         <div className="absolute h-[72px] left-[168px] top-[388px] w-[67px]" style={{ transform: `translate(${position.x}px, ${position.y}px)` }} data-node-id="125:1134" data-name="image 87">
@@ -80,3 +80,4 @@ export default function MapArtwork({ assets, nickname = '승우', equipped = {},
     </div>
   );
 }
+export default React.memo(MapArtwork);

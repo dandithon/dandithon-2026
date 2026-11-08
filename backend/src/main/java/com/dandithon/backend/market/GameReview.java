@@ -4,7 +4,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 @Entity @Table(name="game_reviews")
 public class GameReview {
-    @Id @Column(length=64) String id;
+    @Id @Column(length=64) public String id;
     @Column(name="order_id",nullable=false,unique=true,length=64) String orderId;
     @Column(name="user_id",nullable=false) long userId;
     @Column(name="store_id",nullable=false,length=64) String storeId;

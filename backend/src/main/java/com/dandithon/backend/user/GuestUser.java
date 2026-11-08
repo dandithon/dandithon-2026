@@ -20,7 +20,7 @@ public class GuestUser {
     @Column(name="store_id", nullable=false, length=64)
     private java.util.Set<String> favorites = new java.util.LinkedHashSet<>();
     protected GuestUser() {}
-    public GuestUser(long id) { this.id=id; nickname="승우"; balance=1000; level=1; exp=0; nextLevelExp=100; }
+    public GuestUser(long id) { this.id=id; nickname=id==1L?"승우":"게스트"+id; balance=1000; level=1; exp=0; nextLevelExp=100; }
     public Long getId() { return id; }
     public String getNickname() { return nickname; }
     public long getBalance() { return balance; }

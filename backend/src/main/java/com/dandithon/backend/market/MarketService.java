@@ -19,9 +19,10 @@ public class MarketService {
     private final UserRepository users;
     private final PurchaseProgressService progress;
     private final Clock clock;
+    private final ReviewPhotoService photos;
     private final SeomunEtaService eta;
-    public MarketService(MarketCatalog catalog,OrderRepository orders,ReviewRepository reviews,UserRepository users,PurchaseProgressService progress,Clock clock,SeomunEtaService eta) {
-        this.catalog=catalog;this.orders=orders;this.reviews=reviews;this.users=users;this.progress=progress;this.clock=clock;this.eta=eta;
+    public MarketService(MarketCatalog catalog,OrderRepository orders,ReviewRepository reviews,UserRepository users,PurchaseProgressService progress,Clock clock,ReviewPhotoService photos,SeomunEtaService eta) {
+        this.catalog=catalog;this.orders=orders;this.reviews=reviews;this.users=users;this.progress=progress;this.clock=clock;this.photos=photos;this.eta=eta;
     }
     public record ItemRequest(String menuId,Integer quantity) {}
     public record OrderRequest(String storeId,List<ItemRequest> items) {}
@@ -32,7 +33,7 @@ public class MarketService {
     public record ReviewView(String id,String authorName,int rating,String text,String date,boolean photos,List<String> imageUrls) {}
     public record ReviewResult(String reviewId,String orderId,int rating,String text,String authorName,String date) {}
     public record StoreSummary(String id,String name,String category,int waitTimeMinutes,String crowdLevel,String crowdLabel,int npcCount,List<String> tags,boolean mock,String waitTimeSource,String modelVersion,boolean synthetic,Integer secondsPerSimulatedMinute) {}
-    public record StoreDetail(String id,String name,String category,String description,String greeting,double rating,int reviewCount,List<String> tags,List<MarketCatalog.Menu> menus,boolean mock) {}
+    public record StoreDetail(String id,String name,String category,String description,String greeting,String location,String businessHours,String phone,double rating,int reviewCount,List<String> tags,List<MarketCatalog.Menu> menus,boolean mock) {}
     public static String crowd(int minutes) {return minutes<5?"CALM":minutes<10?"NORMAL":minutes<20?"CROWDED":"VERY_CROWDED";}
     public List<StoreSummary> stores() {
         return catalog.stores().stream().map(s->{
@@ -47,7 +48,7 @@ public class MarketService {
     public StoreDetail store(String id) {
         var s=catalog.store(id);var all=reviews.findByStoreIdOrderByCreatedAtDescIdDesc(id);
         double rating=all.stream().mapToInt(r->r.rating).average().orElse(0);
-        return new StoreDetail(s.id(),s.name(),s.category(),s.description(),s.greeting(),Math.round(rating*10)/10.0,all.size(),s.tags(),s.menus(),true);
+        return new StoreDetail(s.id(),s.name(),s.category(),s.description(),s.greeting(),s.location(),s.businessHours(),s.phone(),Math.round(rating*10)/10.0,all.size(),s.tags(),s.menus(),true);
     }
     @Transactional
     public OrderResult order(OrderRequest request,String key) {
@@ -61,8 +62,9 @@ public class MarketService {
             if(quantities.putIfAbsent(item.menuId(),item.quantity())!=null)throw ApiException.invalid("같은 메뉴는 한 행에 수량을 합쳐 주세요.");
         }
         String signature=store.id()+":"+quantities;
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
         var user=lockedUser();
-        var prior=orders.findByUserIdAndRequestKey(1,key);
+        var prior=orders.findByUserIdAndRequestKey(currentUserId,key);
         if(prior.isPresent()) {
             if(!prior.get().requestSignature.equals(signature))throw ApiException.invalid("이미 다른 주문에 사용된 키예요.");
             return orderResult(prior.get());
@@ -72,9 +74,9 @@ public class MarketService {
         var orderedAt=now();
         user.spend(total);
         user.gainExp(Math.max(10L, total / 10L));
-        var order=new GameOrder("ord-"+UUID.randomUUID(),store,key,signature,total,user.getBalance(),orderedAt,lines);
+        var order=new GameOrder("ord-"+UUID.randomUUID(),currentUserId,store,key,signature,total,user.getBalance(),orderedAt,lines);
         orders.save(order);
-        for(var line:lines)progress.recordSuccessfulPurchase(1,order.id+":"+line.menuId,line.menuId);
+        for(var line:lines)progress.recordSuccessfulPurchase(currentUserId,order.id+":"+line.menuId,line.menuId);
         return orderResult(order);
     }
     private OrderResult orderResult(GameOrder order) {
@@ -83,7 +85,8 @@ public class MarketService {
     }
     public List<Receipt> receipts() {
         LocalDateTime time=now();
-        return orders.findByUserIdOrderByOrderedAtDescIdDesc(1).stream().flatMap(o->o.lines.stream().map(l->new Receipt(o.id,o.storeId,o.storeName,l.menuId,l.menuName,l.quantity,o.status(time),!o.reviewed,o.orderedAt))).toList();
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
+        return orders.findByUserIdOrderByOrderedAtDescIdDesc(currentUserId).stream().flatMap(o->o.lines.stream().map(l->new Receipt(o.id,o.storeId,o.storeName,l.menuId,l.menuName,l.quantity,o.status(time),!o.reviewed,o.orderedAt))).toList();
     }
     public List<ReviewView> reviews(String storeId) {
         catalog.store(storeId);
@@ -98,13 +101,15 @@ public class MarketService {
         if(images.size()>5)throw ApiException.invalid("이미지는 최대 5개까지 첨부할 수 있어요.");
         for(String url:images) {
             if(url==null||url.length()>2048||url.isBlank())throw ApiException.invalid("이미지 주소를 확인해 주세요.");
-            try {var uri=URI.create(url);if(!(url.startsWith("/assets/")&&!url.contains("..")||("https".equals(uri.getScheme())&&uri.getHost()!=null)))throw new IllegalArgumentException();}
+            try {var uri=URI.create(url);if(!((url.startsWith("/assets/")||url.startsWith(ReviewPhotoService.PREFIX))&&!url.contains("..")||("https".equals(uri.getScheme())&&uri.getHost()!=null)))throw new IllegalArgumentException();}
             catch(IllegalArgumentException e){throw ApiException.invalid("이미지는 /assets/ 경로나 HTTPS 주소만 허용해요.");}
         }
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
         var user=lockedUser();
-        var order=orders.findById(request.orderId()).filter(o->o.userId==1).orElseThrow(()->new ApiException("ORDER_NOT_FOUND","주문을 찾을 수 없어요.",HttpStatus.NOT_FOUND));
+        var order=orders.findById(request.orderId()).filter(o->o.userId==currentUserId).orElseThrow(()->new ApiException("ORDER_NOT_FOUND","주문을 찾을 수 없어요.",HttpStatus.NOT_FOUND));
         if(order.reviewed)throw new ApiException("INVALID_ORDER_STATUS","리뷰는 주문당 한 번만 작성할 수 있어요.",HttpStatus.BAD_REQUEST);
         var review=new GameReview(order,user.getNickname(),request.rating(),text,images,now());
+        photos.attach(images,order.id,review.id);
         reviews.save(review);order.reviewed=true;
         return new ReviewResult(review.id,order.id,review.rating,review.text,review.authorName,date(review.createdAt));
     }
@@ -116,16 +121,21 @@ public class MarketService {
         }
         var review = reviews.findById(reviewId)
             .orElseThrow(() -> new ApiException("REVIEW_NOT_FOUND", "리뷰를 찾을 수 없어요.", HttpStatus.NOT_FOUND));
-        if (review.userId != 1L) {
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
+        if (review.userId != currentUserId) {
             throw new ApiException("FORBIDDEN", "본인이 작성한 리뷰만 삭제할 수 있어요.", HttpStatus.FORBIDDEN);
         }
         if (review.orderId != null) {
             orders.findById(review.orderId).ifPresent(order -> order.reviewed = false);
         }
+        photos.deleteForReview(review.id);
         reviews.delete(review);
         return new ReviewDeleteResult(reviewId, true);
     }
-    GuestUser lockedUser() {return users.findForUpdate(1).orElseThrow(()->new ApiException("USER_NOT_FOUND","사용자를 찾을 수 없어요.",HttpStatus.NOT_FOUND));}
+    GuestUser lockedUser() {
+        long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
+        return users.findForUpdate(currentUserId).orElseThrow(() -> new ApiException("USER_NOT_FOUND", "사용자를 찾을 수 없어요.", HttpStatus.NOT_FOUND));
+    }
     LocalDateTime now() {return LocalDateTime.now(clock.withZone(ZoneId.of("Asia/Seoul")));}
     private String date(LocalDateTime time) {return time.format(DateTimeFormatter.ofPattern("yyyy. MM. dd"));}
 }

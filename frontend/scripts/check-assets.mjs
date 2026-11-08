@@ -1,8 +1,10 @@
 import {readFile,stat} from 'node:fs/promises';
 import {fileURLToPath} from 'node:url';
 import path from 'node:path';
+import {storeArtwork,menuArtwork} from '../src/assets/storeArtwork.js';
 const root=fileURLToPath(new URL('../',import.meta.url));
 const refs=new Set(['/assets/character-front.png','/assets/character-side.png']);
+for(const reference of [...Object.values(storeArtwork),...Object.values(menuArtwork)])refs.add(reference);
 for(const name of ['figma','exploration','character']){
   const manifest=JSON.parse(await readFile(path.join(root,'src/assets',name+'.json'),'utf8'));
   for(const group of Object.values(manifest))for(const reference of Object.values(group))refs.add(reference);

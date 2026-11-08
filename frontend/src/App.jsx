@@ -1,11 +1,13 @@
 import React,{useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import ProfileDialog from './components/ProfileDialog';
 import FullMapDialog from './components/FullMapDialog';
+import useOrderReadyAlert from './game/useOrderReadyAlert';
 import CoinDialog from './components/CoinDialog';
 import {explorationApi,marketApi,live,validateMode} from './api/service';
 import {progression} from './game/progression';
 import {readProfile} from './game/profile';
-import {sceneLayout} from './game/layout';
+import useRoute from './game/useRoute';
+import {sceneLayout,startLayout} from './game/layout';
 import useModalMotion from './game/useModalMotion';
 import {demoWaits} from './game/crowd';
 import StartPage from './pages/StartPage';
@@ -16,23 +18,27 @@ import ReceiptDialog from './components/ReceiptDialog';
 import QuestDialog from './components/QuestDialog';
 import PurchaseComplete from './components/PurchaseComplete';
 import {ReviewEditor,CartDialog} from './components/ExtraDialogs';
+import DemoDialog from './components/DemoDialog';
 import {getStore,menu} from './api/catalog';
 import {storeLocations} from './game/storeLocation';
 
 
 export default function App(){
-  const [state,setState]=useState(null),[page,setPage]=useState(()=>location.hash.startsWith('#store')?'store':'start');
-  const [storeId,setStoreId]=useState(()=>getStore(location.hash.split('/')[1]).id);
+  const [state,setState]=useState(null);
+  const [{page,storeId,tab},navigate]=useRoute();
+  const setPage=page=>navigate({page}),setStoreId=storeId=>navigate({storeId}),setTab=tab=>navigate({tab});
   const store=getStore(storeId);
-  const [tab,setTab]=useState('menu'),[selected,setSelected]=useState(null),[reviewOrder,setReviewOrder]=useState(null);
+  const [selected,setSelected]=useState(null),[reviewOrder,setReviewOrder]=useState(null);
   const {modal,setModal,close,closing}=useModalMotion();
   const [locationPreview,setLocationPreview]=useState(null);
   const locationTrigger=useRef(null);
+  useEffect(()=>{const restore=()=>{setModal(null);setLocationPreview(null);};window.addEventListener('popstate',restore);window.addEventListener('hashchange',restore);return()=>{window.removeEventListener('popstate',restore);window.removeEventListener('hashchange',restore);};},[]);
   const [completedOrders,setCompletedOrders]=useState([]);
   const [busy,setBusy]=useState(false),[toast,setToast]=useState(''),[layout,setLayout]=useState({scale:1,height:874});
   const {scale,height:sceneHeight}=layout;
   const [preferences,setPreferences]=useState(null),[loadError,setLoadError]=useState('');
   const [profileError,setProfileError]=useState('');
+  const {readyAlert,dismissReadyAlert}=useOrderReadyAlert(state?.orders);
   const progress=useMemo(()=>state&&preferences?progression(state,preferences):null,[state,preferences]);
   const loadId=useRef(0);
   const lock=useRef(false),toastTimer=useRef(),container=useRef(null);
@@ -52,32 +58,60 @@ export default function App(){
     const resize=()=>{
       const style=getComputedStyle(element);
       const inset=parseFloat(style.paddingTop)+parseFloat(style.paddingBottom);
-      const footer=element.querySelector('footer').offsetHeight;
       const visible=window.visualViewport;
-      // svh reserves expanded browser chrome. VisualViewport also handles browsers
+      // Dynamic viewport units track browser chrome. VisualViewport also handles browsers
       // whose visible area is smaller. Keep layout stable during keyboard entry/zoom.
       const typing=/INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName);
       const visibleHeight=!typing&&visible?.scale===1?Math.min(element.clientHeight,visible.height):element.clientHeight;
       const portraitPhone=window.matchMedia('(max-width: 600px) and (orientation: portrait)').matches;
-      setLayout(sceneLayout(element.clientWidth,visibleHeight-footer-inset,portraitPhone&&page==='market'));
+      setLayout(portraitPhone&&page==='start'?startLayout(element.clientWidth,visibleHeight-inset):sceneLayout(element.clientWidth,visibleHeight-inset,portraitPhone&&(page==='market'||page==='store'||page==='menu')));
     };
-    const observer=new ResizeObserver(resize);observer.observe(element);observer.observe(element.querySelector('footer'));window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);resize();
+    const observer=new ResizeObserver(resize);observer.observe(element);window.addEventListener('resize',resize);window.visualViewport?.addEventListener('resize',resize);resize();
     return()=>{observer.disconnect();window.removeEventListener('resize',resize);window.visualViewport?.removeEventListener('resize',resize);};
   },[page]);
-  useEffect(()=>{if(modal!=='receipts')return;let active=true,pending=false;
-    const tick=async()=>{if(pending)return;pending=true;try{const data=await marketApi.refreshOrders();if(active)setState(data);}catch(error){if(active){notify(error.message||'영수증을 갱신하지 못했어요.');clearInterval(timer);}}finally{pending=false;}};
-    const timer=setInterval(tick,1000);tick();return()=>{active=false;clearInterval(timer);};
-  },[modal,notify]);
+  const hasCookingOrders=Boolean(state?.orders.some(order=>order.status==='cooking'));
+  useEffect(()=>{
+    if(!state||busy||(!hasCookingOrders&&modal!=='receipts'))return;
+    let active=true,pending=false,errorShown=false;
+    const tick=async()=>{
+      if(pending||lock.current||document.hidden)return;
+      pending=true;
+      try{
+        const data=await marketApi.refreshOrders();
+        if(active){setState(current=>({...current,orders:data.orders}));errorShown=false;}
+      }catch(error){
+        if(active&&!errorShown){notify(error.message||'주문 상태를 갱신하지 못했어요. 다시 확인할게요.');errorShown=true;}
+      }finally{pending=false;}
+    };
+    const timer=setInterval(tick,1000);
+    document.addEventListener('visibilitychange',tick);
+    tick();
+    return()=>{active=false;clearInterval(timer);document.removeEventListener('visibilitychange',tick);};
+  },[Boolean(state),hasCookingOrders,modal,busy,notify]);
+  useEffect(()=>{
+    if(!live||page==='start'||!state||!preferences)return;
+    let active=true,pending=false;
+    const tick=async()=>{
+      if(pending||lock.current||document.hidden)return;
+      pending=true;
+      try{const data=await marketApi.refreshStores();if(active)setState(current=>({...current,waits:data.waits,waitsStale:false}));}
+      catch{if(active)setState(current=>({...current,waitsStale:true}));}
+      finally{pending=false;}
+    };
+    const timer=setInterval(tick,15000);document.addEventListener('visibilitychange',tick);tick();
+    return()=>{active=false;clearInterval(timer);document.removeEventListener('visibilitychange',tick);};
+  },[page,Boolean(state),Boolean(preferences)]);
   const run=async task=>{if(lock.current)return;lock.current=true;setBusy(true);try{await task();return true;}catch(error){notify(error.message||'잠시 후 다시 시도해 주세요.');return false;}finally{lock.current=false;setBusy(false);}};
   const refreshProfile=async()=>{
     if(!live)return;
     const {profile,error}=await readProfile(explorationApi);
     setProfileError(error);
-    if(profile){setPreferences(profile);setState(current=>({...current,balance:profile.balance}));}
+    if(profile){setPreferences(profile);setState(current=>({...current,balance:profile.balance,...(Array.isArray(profile.favorites)?{favorites:profile.favorites,favoritesSupported:true}:{})}));}
+    return profile;
   };
   const openModal=name=>{
     if(name==='quests')return run(async()=>{setState(await marketApi.refreshQuests());setModal(name);});
-    if(live && name==='profile')return run(async()=>{await refreshProfile();setModal(name);});
+    if(live && name==='profile')return run(async()=>{setState(await marketApi.refreshFeatures());await refreshProfile();setModal(name);});
     setModal(name);
   };
   const updateCoins=async amount=>{
@@ -116,7 +150,7 @@ export default function App(){
   const visit=id=>run(async()=>{
     // Store details were loaded with the catalog. Mission recording must not
     // prevent browsing when the deployed backend does not support it yet.
-    setStoreId(id);setPage('store');setModal(null);
+    navigate({storeId:id,page:'store',tab:'menu'});setModal(null);
     try{setState(await marketApi.visit(id));}
     catch{notify('가게 정보는 볼 수 있어요. 둘러보기 미션 기록은 반영 여부를 확인하지 못했어요.');}
   });
@@ -127,38 +161,65 @@ export default function App(){
   };
   const returnLocation=()=>{
     if(!locationPreview)return;
-    setStoreId(locationPreview.storeId);setTab(locationPreview.returnTab);setPage(locationPreview.returnPage);setLocationPreview(null);
+    navigate({storeId:locationPreview.storeId,tab:locationPreview.returnTab,page:locationPreview.returnPage});setLocationPreview(null);
     requestAnimationFrame(()=>locationTrigger.current?.isConnected&&locationTrigger.current.focus());
   };
   const favorite=()=>run(async()=>{setState(await marketApi.favorite(storeId));});
-  const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');await refreshProfile();});
+  const order=(items,fromCart=false)=>run(async()=>{const result=await marketApi.order(items,{fromCart});setState(result.state);setCompletedOrders(result.orders);setPage('market');setModal('success');const profile=await refreshProfile();if(profile&&profile.level>preferences.level)notify(`레벨 업! 레벨 ${profile.level}이 되었어요.`);});
+  const deleteReview=id=>run(async()=>{
+    setState(await marketApi.deleteReview(id));notify('리뷰를 삭제했어요. 영수증에서 다시 작성할 수 있어요.');
+    try{setState(await marketApi.refreshOrders());}
+    catch{notify('삭제는 완료됐어요. 영수증을 다시 열어 작성 가능 상태를 확인해 주세요.');}
+  });
+  const refreshFavorites=()=>run(async()=>setState(await marketApi.refreshFavorites()));
+  const refreshReviews=()=>run(async()=>setState(await marketApi.refreshReviews()));
+  const openFavorite=id=>{if(lock.current)return;setModal(null);visit(id);};
+  const saveReview=(id,text,rating,imageUrls=[])=>run(async()=>{
+    setState(await marketApi.review(id,text,rating,preferences.nickname,imageUrls));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');
+    try{setState(await marketApi.refreshQuests());}
+    catch{notify('리뷰는 저장됐어요. 미션 창에서 최신 진행도를 확인해 주세요.');}
+  });
   const add=(id,q)=>run(async()=>{setState(await marketApi.addToCart(id,q));setModal(null);notify('메뉴를 담았어요. 화면 아래에서 담은 메뉴를 확인하세요.');});
-  const openReview=id=>run(async()=>{const data=await marketApi.refreshOrders();setState(data);const ready=data.orders.find(o=>o.status==='ready'&&(id?o.id===id:menu.find(m=>m.id===o.itemId)?.storeId===storeId));if(!ready){notify('조리가 완료된 주문이 있어야 리뷰를 작성할 수 있어요.');return;}setStoreId(menu.find(m=>m.id===ready.itemId).storeId);setReviewOrder(ready.id);setModal('review');});
-  const toMenu=next=>{setTab(next);setPage('menu');};
+  const openReview=id=>run(async()=>{const data=await marketApi.refreshOrders();setState(data);const ready=data.orders.find(o=>(o.canReview??o.status==='ready')&&(id?o.id===id:menu.find(m=>m.id===o.itemId)?.storeId===storeId));if(!ready){notify('리뷰 작성이 가능한 주문이 없어요. 영수증을 확인해 주세요.');return;}setStoreId(menu.find(m=>m.id===ready.itemId).storeId);setReviewOrder(ready.id);setModal('review');});
+  const toMenu=next=>navigate({tab:next,page:'menu'});
+  const gainExp=amount=>run(async()=>{
+    const updated=await explorationApi.gainExp(amount);
+    setPreferences(updated);
+    if(updated?.level>preferences?.level)notify(`레벨 업! 레벨 ${updated.level}이 되었어요.`);
+  });
+  const visitAll=()=>run(async()=>{
+    await marketApi.visit('seomun');
+    await marketApi.visit('noodle');
+    setState(await marketApi.visit('hotteok'));
+  });
   return <div ref={container} className="app-shell mx-auto w-full">
     <main className="relative mx-auto shrink-0 overflow-hidden shadow-2xl" style={{height:sceneHeight*scale,width:402*scale}}>
       <div className="absolute left-0 top-0 w-[402px] origin-top-left bg-paper font-sans" style={{height:sceneHeight,transform:`scale(${scale})`,'--controls-shift':`${sceneHeight-874}px`}}>
         {!state||!preferences?<section className="p-8 pt-40 text-center" aria-live="polite">{loadError?<><h1 className="font-retro text-xl">잠시 쉬어갈까요?</h1><p role="alert" className="my-6 break-words text-sm leading-6">{loadError}</p><button onClick={load} className="rounded-lg border-2 border-[#946034] bg-[#ffc857] px-5 py-3">다시 시도</button>{!live&&loadError.includes('프로필')&&<button className="mt-4 block w-full text-sm underline" onClick={async()=>{try{await explorationApi.resetPreferences();load();}catch(error){setLoadError(error.message);}}}>프로필 설정만 초기화 (주문·리뷰 유지)</button>}</>:<p>시장을 준비하고 있어요…</p>}</section>:<>
           <div className="size-full" inert={modal?true:undefined}>
-            {page==='start'&&<StartPage onStart={()=>setPage('market')}/>}
+            {page==='start'&&<StartPage sceneHeight={sceneHeight} onStart={()=>setPage('market')}/>}
             <div hidden={page!=='market'} className={`size-full ${page==='market'?'scene-enter':''}`}><MarketPage locationPreview={locationPreview} onReturnLocation={returnLocation} sceneHeight={sceneHeight} preferences={preferences} progress={progress} waits={state.waits || demoWaits} active={page==='market'} state={state} onStore={visit} onModal={openModal} notify={notify} overlay={modal}/></div>
-            {(page==='store'||page==='menu'||locationPreview)&&<div hidden={page!=='store'&&page!=='menu'} className="size-full"><StoreExperience onLocation={showLocation} expanded={(locationPreview?.returnPage||page)==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/></div>}
+            {(page==='store'||page==='menu'||locationPreview)&&<div hidden={page!=='store'&&page!=='menu'} className="size-full"><StoreExperience sceneHeight={sceneHeight} onLocation={showLocation} expanded={(locationPreview?.returnPage||page)==='menu'} store={store} state={state} tab={tab} setTab={setTab} onBack={()=>setPage(page==='menu'?'store':'market')} onFavorite={favorite} onMenu={()=>toMenu('menu')} onReviews={()=>toMenu('reviews')} notify={notify} onSelect={item=>{setSelected(item);setModal('order');}} onReview={()=>openReview()} onCart={()=>setModal('cart')}/></div>}
           </div>
           {modal&&<div key={modal} data-modal={modal} inert={closing?true:undefined} className={`modal-motion absolute inset-0 z-30 ${closing?'is-closing':''}`}>
           {modal==='coins'&&<CoinDialog balance={state.balance} busy={busy} live={live} onClose={close} onCharge={updateCoins} onCheckBalance={()=>updateCoins()} onReset={resetDemo} onReload={reloadAll}/>}
-          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={equip} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
-          {modal==='map'&&<FullMapDialog onClose={close}/>}
+          {modal==='profile'&&<ProfileDialog state={state} preferences={preferences} progress={progress} onClose={close} onHome={()=>{setModal(null);setLocationPreview(null);setPage('start');}} busy={busy} syncError={profileError} onRefresh={()=>run(refreshProfile)} onEquip={equip} onDeleteReview={deleteReview} onRefreshReviews={refreshReviews} onOpenFavorite={openFavorite} onRefreshFavorites={refreshFavorites} onRename={name=>run(async()=>setPreferences(await explorationApi.rename(name)))}/>}
+          {modal==='map'&&<FullMapDialog zones={state.zones} notify={notify} onClose={close} onReturn={()=>{close();setPage('market');setLocationPreview(null);setToast('');}}/>}
           {modal==='order'&&<OrderDialog item={selected} onClose={close} onOrder={order} onAdd={add} busy={busy}/>}
           {modal==='success'&&<PurchaseComplete orders={completedOrders} onClose={close} onReceipts={()=>setModal('receipts')}/>}
           {modal==='receipts'&&<ReceiptDialog orders={state.orders} onClose={close} onReview={openReview}/>}
           {modal==='quests'&&<QuestDialog state={state} onClose={close} onRefresh={()=>run(async()=>setState(await marketApi.refreshQuests()))} onClaim={id=>run(async()=>{const updated=await marketApi.claim(id);setState(updated);notify(`${updated.lastReward?.amount?.toLocaleString('ko-KR')||''} 코인 보상을 받았어요!`);await refreshProfile();})} notify={notify} busy={busy}/>}
-          {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={(id,text,rating)=>run(async()=>{setState(await marketApi.review(id,text,rating,preferences.nickname));setModal(null);toMenu('reviews');notify('리뷰가 저장됐어요.');})}/>}
+          {modal==='review'&&<ReviewEditor orderId={reviewOrder} onClose={close} busy={busy} onSave={saveReview} onUpload={marketApi.uploadReviewPhoto} photoSupported={state.features?.photoUpload}/>}
           {modal==='cart'&&<CartDialog state={state} onClose={close} onOrder={items=>order(items,true)} onRemove={id=>run(async()=>setState(await marketApi.removeFromCart(id)))} busy={busy}/>}
+          {modal==='demo'&&<DemoDialog state={state} preferences={preferences} busy={busy} live={live} onClose={close} onCharge={updateCoins} onGainExp={gainExp} onReset={resetDemo} onReload={reloadAll} onVisitAll={visitAll} notify={notify}/>}
           </div>}
         </>}
+        {readyAlert&&!modal&&<div role="status" className="absolute inset-x-4 top-4 z-50 flex items-start gap-2 rounded-xl border-2 border-[#d78a29] bg-[#fff4df] p-4 text-[#513724] shadow-xl">
+          <button onClick={()=>{dismissReadyAlert();setModal('receipts');}} className="flex-1 text-left text-sm leading-6">주문하신 음식이 조리 완료되었어요! 영수증에서 리뷰를 남겨보세요 🍜</button>
+          <button onClick={dismissReadyAlert} aria-label="조리 완료 알림 닫기" className="flex size-9 shrink-0 items-center justify-center text-xl">×</button>
+        </div>}
         {toast&&<div role="status" className="pointer-events-none absolute inset-x-[24px] bottom-[24px] z-50 rounded-xl border border-[#dec69c] bg-[#3c2b20f2] px-5 py-4 text-center text-[13px] leading-6 text-[#fff4de] shadow-xl">{toast}</div>}
       </div>
     </main>
-    <footer className="flex items-center justify-between gap-4 px-4 py-3 text-[11px] text-[#d5dacb]"><span>{live?'서버 연결 · 공용 게스트 · 게임 코인':'프론트엔드 데모 · 실제 주문/결제 없음'}</span><button onClick={()=>{setModal(null);setLocationPreview(null);setPage('start');}} className="underline underline-offset-4">처음으로</button></footer>
   </div>;
 }
