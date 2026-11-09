@@ -6,30 +6,43 @@ const lineId = (orderId, menuId) => orderId + ':' + menuId;
 const receiptLine = row => ({...row, id:lineId(row.orderId,row.menuId), itemId:row.menuId});
 const reviewView = (row, storeId) => ({...row, storeId, name:row.authorName});
 
-export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl) {
-  const key='dandi-api-guest-local-v1';
+export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl,getGuestId=()=> '1') {
+  const legacyKey='dandi-api-guest-local-v1';
+  const cacheKey=id=>id==='1'?legacyKey:legacyKey+':'+id;
+  let key;
   let local={cart:[],favorites:[],visits:[]};
   let state={}, preferences={};
   const mediaUrl=url=>url?.startsWith('/api/v1/review-photos/')&&mediaBaseUrl?new URL(url,mediaBaseUrl).href:url;
   const reviewWithPhotos=(row,storeId)=>({...reviewView(row,storeId),imageUrls:row.imageUrls?.map(mediaUrl)});
   const snapshot=()=>({...state, cart:[...local.cart], favorites:[...local.favorites], visits:[...local.visits]});
-  const persist=()=>storage.setItem(key, JSON.stringify(local));
+  const persist=()=>storage.setItem(key??cacheKey(getGuestId()), JSON.stringify(local));
   const setQuests=quests=>{
     state.quests=quests;
     state.claimed=Object.values(quests).flat().filter(q=>q.status==='CLAIMED').map(q=>q.id);
   };
+  const readProfile=async()=>{
+    const [user,{equipments},{foods}]=await Promise.all([
+      request('/users/me'),request('/profile/equipments'),request('/profile/badges')
+    ]);
+    const items=equipments.map(e=>({...e, image:equipment.find(i=>i.id===e.id)?.image,
+      itemId:e.targetFoodId, required:e.requiredCount, count:e.currentCount}));
+    return {...user,items,foods,counts:Object.fromEntries(foods.map(f=>[f.foodId,f.purchaseCount]))};
+  };
+  const applyProfile=user=>{
+    preferences=user;
+    state.balance=user.balance;
+    if(Array.isArray(user.favorites))local.favorites=[...user.favorites];
+    return preferences;
+  };
+  const readReviews=async()=>{
+    const entries=await Promise.all(stores.map(async store=>{
+      const {reviews}=await request('/stores/'+encodeURIComponent(store.id)+'/reviews');
+      return reviews.map(review=>reviewWithPhotos(review,store.id));
+    }));
+    return entries.flat();
+  };
   const profile={
-    async load(){
-      const [user,{equipments},{foods}]=await Promise.all([
-        request('/users/me'),request('/profile/equipments'),request('/profile/badges')
-      ]);
-      const items=equipments.map(e=>({...e, image:equipment.find(i=>i.id===e.id)?.image,
-        itemId:e.targetFoodId, required:e.requiredCount, count:e.currentCount}));
-      preferences={...user,items,foods,counts:Object.fromEntries(foods.map(f=>[f.foodId,f.purchaseCount]))};
-      state.balance=user.balance;
-      if(Array.isArray(user.favorites))local.favorites=[...user.favorites];
-      return preferences;
-    },
+    async load(){return applyProfile(await readProfile());},
     async equip(id){
       const result=await request('/profile/equipments/'+encodeURIComponent(id)+'/toggle',{method:'PATCH'});
       preferences={...preferences,...result};
@@ -47,6 +60,24 @@ export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl) {
     }
   };
   const market={
+    async refreshPresenter(isCurrent){
+      const [profile,{receipts},quests]=await Promise.all([
+        readProfile(),request('/orders/receipts'),request('/quests')
+      ]);
+      if(!isCurrent())return;
+      const receiptIds=new Set(receipts.map(row=>row.orderId));
+      const ordersRemoved=state.orders.some(order=>!receiptIds.has(order.orderId));
+      if(ordersRemoved){
+        const reviews=await readReviews();
+        if(!isCurrent())return;
+        state.reviews=reviews;
+        state.lastReward=null;
+      }
+      applyProfile(profile);
+      state.orders=receipts.map(receiptLine);
+      setQuests(quests);
+      return {state:snapshot(),profile};
+    },
     async resetDemo(){
       const user=await request('/demo/reset',{method:'POST'});
       const balance=confirmedBalance(user);
@@ -71,6 +102,9 @@ export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl) {
       return {state:snapshot(),user};
     },
     async load(){
+      const nextKey=cacheKey(getGuestId());
+      if(key!==nextKey)local={cart:[],favorites:[],visits:[]};
+      key=nextKey;
       try {
         const saved=JSON.parse(storage.getItem(key));
         if(saved && ['cart','favorites','visits'].every(field=>Array.isArray(saved[field])))local=saved;
@@ -106,11 +140,8 @@ export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl) {
       return snapshot();
     },
     async refreshReviews(){
-      const entries=await Promise.all(stores.map(async store=>{
-        const {reviews}=await request('/stores/'+encodeURIComponent(store.id)+'/reviews');
-        return reviews.map(review=>reviewWithPhotos(review,store.id));
-      }));
-      state.reviews=entries.flat();return snapshot();
+      state.reviews=await readReviews();
+      return snapshot();
     },
     async refreshStores(){
       const {stores}=await request('/stores');
