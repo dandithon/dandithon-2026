@@ -40,7 +40,7 @@ export default function CoinDialog({balance,busy,live,onClose,onCharge,onCheckBa
       <div aria-live="polite">{done&&<p className="mb-4 text-sm font-semibold text-[#57713f]">충전이 완료됐어요!</p>}{error&&<p role="alert" className="mb-3 break-words text-xs leading-5 text-[#9d3826]">{error}</p>}{uncertain&&<p className="mb-4 text-xs leading-5 text-[#806453]">요청이 처리됐을 수 있어요. 먼저 잔액을 확인해 주세요. 이 창에서는 충전을 다시 보내지 않아요.</p>}</div>
       {uncertain?<button disabled={busy} onClick={check} className="w-full rounded-xl border-2 border-[#946034] bg-[#f2dfbf] py-3 font-retro disabled:opacity-50">{busy?'잔액 확인 중…':'현재 잔액 확인'}</button>:done?<button onClick={onClose} className="w-full rounded-xl border-2 border-[#946034] bg-[#ffc857] py-3 font-retro">시장으로 돌아가기</button>:<button disabled={busy||!valid} onClick={charge} className="w-full rounded-xl border-2 border-[#946034] bg-[#ffc857] py-3 font-retro text-lg shadow-[0_4px_0_#b47b35] disabled:opacity-50">{busy?'충전 중…':'무료 코인 받기'}</button>}
       <ResetDemoPanel busy={busy} live={live} onReset={onReset} onReload={onReload}/>
-      <p className="mt-5 text-[10px] leading-4 text-[#806453]">{live?'공용 게스트의 잔액에 반영돼요.':'오프라인 시연 · 이 브라우저에만 저장돼요.'}</p>
+      <p className="mt-5 text-[10px] leading-4 text-[#806453]">{live?'현재 게스트의 잔액에 반영돼요.':'오프라인 시연 · 이 브라우저에만 저장돼요.'}</p>
     </section>
   </Dialog>;
 }

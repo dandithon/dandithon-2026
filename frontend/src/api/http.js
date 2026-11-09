@@ -1,4 +1,15 @@
 let customGuestId = null;
+const maxGuestId = 1_000_000_000_000;
+
+export function isGuestId(id) {
+  return /^[1-9]\d*$/.test(id) && Number(id) <= maxGuestId;
+}
+
+export function newGuestId() {
+  const [high, low] = crypto.getRandomValues(new Uint32Array(2));
+  const random = (high & 0xfffff) * 2 ** 32 + low;
+  return String(2 + random % (maxGuestId - 1));
+}
 
 export function setGuestId(id) {
   customGuestId = id != null ? String(id) : null;
@@ -15,21 +26,23 @@ export function getGuestId() {
   try {
     if (typeof localStorage !== 'undefined') {
       const stored = localStorage.getItem('dandi-guest-user-id');
-      if (stored) {
+      if (stored && isGuestId(stored)) {
         customGuestId = stored;
         return stored;
       }
     }
   } catch {}
-  return '1';
+  const id = newGuestId();
+  setGuestId(id);
+  return id;
 }
 
-export function createClient(baseUrl) {
+export function createClient(baseUrl, resolveGuestId = getGuestId) {
   return async function request(path, {method='GET', body, headers={}}={}) {
     if (!baseUrl) throw Error('VITE_API_BASE_URL 설정을 확인해 주세요.');
     let response;
     const multipart=typeof FormData!=='undefined'&&body instanceof FormData;
-    const guestId = getGuestId();
+    const guestId = resolveGuestId();
     const guestHeaders = guestId ? {'X-User-Id': guestId} : {};
     try {
       response = await fetch(baseUrl.replace(/\/+$/, '') + path, {
