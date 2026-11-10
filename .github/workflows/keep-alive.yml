@@ -1,0 +1,44 @@
+name: CloudType Keep-Alive & Auto-Restart
+
+on:
+  schedule:
+    # Run every 10 minutes to prevent CloudType container & MariaDB from sleeping
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping-and-revive:
+    name: Ping Backend & Auto-Revive
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Backend API
+        id: ping
+        run: |
+          URL="https://port-0-dandithon-backend-mw1mk9y6e7f0b691.sel3.cloudtype.app/api/v1/stores"
+          echo "Pinging backend at: $URL"
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 15 "$URL" || echo "000")
+          echo "HTTP Status: $STATUS"
+          echo "status=$STATUS" >> $GITHUB_OUTPUT
+
+      - name: Check Health & Trigger Auto-Restart if Down
+        run: |
+          STATUS="${{ steps.ping.outputs.status }}"
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Backend is healthy & active. Database connection is maintained."
+            exit 0
+          fi
+
+          echo "⚠️ Backend returned HTTP $STATUS (Down or Sleeping)!"
+          
+          if [ -n "${{ secrets.CLOUDTYPE_DEPLOY_WEBHOOK }}" ]; then
+            echo "🚀 Triggering CloudType Deploy Webhook to restart backend..."
+            RESPONSE=$(curl -s -X POST "${{ secrets.CLOUDTYPE_DEPLOY_WEBHOOK }}")
+            echo "Webhook Response: $RESPONSE"
+            echo "Restart request sent to CloudType."
+          else
+            echo "ℹ️ Note: CLOUDTYPE_DEPLOY_WEBHOOK secret is not set in repository secrets."
+            echo "To enable automatic container revival, add your CloudType deploy webhook URL as CLOUDTYPE_DEPLOY_WEBHOOK in GitHub Secrets."
+          fi
+          
+          # Fail the job if backend is not 200 so maintainers get notified via GitHub notifications
+          exit 1
