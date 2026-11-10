@@ -7,6 +7,7 @@ import useExploration from '../game/useExploration';
 import {getStore} from '../api/catalog';
 import CrowdLayer from '../components/CrowdLayer';
 import useGeolocation from '../game/useGeolocation';
+import {hasClaimableQuest} from '../game/quests';
 import GpsStatus from '../components/GpsStatus';
 import {mapCalibration} from '../game/mapCalibration';
 export default function MarketPage({state,onStore,onModal,notify,overlay,active=true,preferences,progress,waits,sceneHeight=874,locationPreview,onReturnLocation}){
@@ -41,7 +42,9 @@ export default function MarketPage({state,onStore,onModal,notify,overlay,active=
     <div className={locationPreview?'hidden':'contents'} inert={locationPreview?true:undefined} aria-hidden={locationPreview?true:undefined}>
     <div className="pointer-events-none absolute inset-0"><MapArtwork assets={manifest[screen]} nickname={preferences.nickname} balance={state.balance} joystick={joystick} stick={stick}/></div>
     <button aria-label="전체 지도 열기" onClick={()=>onModal('map')} className="hud-action absolute left-[328px] top-[174px] size-[64px]"/>
-    <button aria-label="퀘스트 열기" onClick={()=>onModal('quests')} className="hud-action absolute left-[327px] top-[258px] size-[64px]"/>
+    <button aria-label="퀘스트 열기" onClick={()=>onModal('quests')} className="hud-action absolute left-[327px] top-[258px] size-[64px]">
+      {hasClaimableQuest(state)&&<><span aria-hidden="true" className="absolute right-1 top-1 size-4 rounded-full border-2 border-[#fff4df] bg-red-500 shadow"/><span className="sr-only">보상을 받을 수 있는 퀘스트가 있어요</span></>}
+    </button>
     <button aria-label="내 영수증 열기" onClick={()=>onModal('receipts')} className="hud-action absolute left-[327px] top-[342px] size-[64px]">
       {state.orders.some(order=>order.canReview??order.status==='ready')&&<><span aria-hidden="true" className="absolute right-1 top-1 size-4 rounded-full border-2 border-[#fff4df] bg-orange-500 shadow"/><span className="sr-only">리뷰를 작성할 수 있는 주문이 있어요</span></>}
     </button>
