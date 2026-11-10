@@ -118,4 +118,34 @@ public class GuestIsolationIntegrationTest {
         var finalUser1 = json(send("GET", "/users/me", null, 1L, null), 200).path("data");
         assertThat(finalUser1.path("balance").asLong()).isEqualTo(1000L);
     }
+
+    @Test
+    void publicReviewsMarkOnlyTheRequestingGuestsReviewsAsMine() throws Exception {
+        String orderBody = """
+            {"storeId":"seomun","items":[{"menuId":"tteok","quantity":1}]}
+            """;
+        var order = json(send("POST", "/orders", orderBody, 2L, "review-owner-order"), 200).path("data");
+        String reviewBody = """
+            {"orderId":"%s","rating":5,"text":"Ownership test"}
+            """.formatted(order.path("orderId").asText());
+        var review = json(send("POST", "/reviews", reviewBody, 2L, null), 201).path("data");
+        String reviewId = review.path("reviewId").asText();
+        String listPath = "/stores/seomun/reviews";
+
+        var ownerResponse = send("GET", listPath, null, 2L, null);
+        var ownerReviews = json(ownerResponse, 200).path("data").path("reviews");
+        assertThat(ownerResponse.headers().firstValue("Cache-Control")).contains("no-store");
+        assertThat(ownerReviews.size()).isEqualTo(1);
+        assertThat(ownerReviews.get(0).path("isMine").asBoolean()).isTrue();
+
+        var otherReviews = json(send("GET", listPath, null, 1L, null), 200).path("data").path("reviews");
+        assertThat(otherReviews.size()).isEqualTo(1);
+        assertThat(otherReviews.get(0).path("id").asText()).isEqualTo(reviewId);
+        assertThat(otherReviews.get(0).path("isMine").isBoolean()).isTrue();
+        assertThat(otherReviews.get(0).path("isMine").asBoolean()).isFalse();
+        json(send("DELETE", "/reviews/" + reviewId, null, 1L, null), 403);
+
+        json(send("DELETE", "/reviews/" + reviewId, null, 2L, null), 200);
+        assertThat(json(send("GET", listPath, null, 2L, null), 200).path("data").path("reviews").size()).isZero();
+    }
 }

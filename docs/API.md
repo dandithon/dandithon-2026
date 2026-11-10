@@ -650,6 +650,9 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
 ---
 
 ### 4.11 가게 리뷰 목록 조회
+
+가게의 공개 리뷰 전체를 반환한다. 각 리뷰의 `isMine`은 요청한 게스트가 작성자인지 나타낸다. 프로필의 내 리뷰는 `isMine: true`인 항목만 표시한다. 응답에는 `Cache-Control: no-store`를 설정한다.
+
 - **Method**: `GET`
 - **Endpoint**: `/api/v1/stores/{storeId}/reviews`
 - **Response (200 OK)**:
@@ -661,6 +664,7 @@ Figma 13개 화면 디자인 및 프론트엔드 최신 구조(`frontend/src/api
       {
         "id": "rev-1",
         "authorName": "승우",
+        "isMine": true,
         "rating": 4,
         "text": "진짜 서문시장 오면 무조건 먹어야 해요! 매콤달콤한 양념이 너무 맛있고 튀김이랑 같이 먹으니까 조합 최고에요!",
         "date": "2026. 10. 12",

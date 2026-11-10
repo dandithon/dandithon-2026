@@ -30,7 +30,7 @@ public class MarketService {
     public record OrderItem(String menuId,String menuName,int quantity,long price) {}
     public record OrderResult(String orderId,String storeId,long totalPrice,long remainingBalance,String status,int readyAfterSeconds,List<OrderItem> items) {}
     public record Receipt(String orderId,String storeId,String storeName,String menuId,String menuName,int quantity,String status,boolean canReview,LocalDateTime orderedAt) {}
-    public record ReviewView(String id,String authorName,int rating,String text,String date,boolean photos,List<String> imageUrls) {}
+    public record ReviewView(String id,String authorName,int rating,String text,String date,boolean photos,List<String> imageUrls,boolean isMine) {}
     public record ReviewResult(String reviewId,String orderId,int rating,String text,String authorName,String date) {}
     public record StoreSummary(String id,String name,String category,int waitTimeMinutes,String crowdLevel,String crowdLabel,int npcCount,List<String> tags,boolean mock,String waitTimeSource,String modelVersion,boolean synthetic,Integer secondsPerSimulatedMinute) {}
     public record StoreDetail(String id,String name,String category,String description,String greeting,String location,String businessHours,String phone,double rating,int reviewCount,List<String> tags,List<MarketCatalog.Menu> menus,boolean mock) {}
@@ -90,7 +90,10 @@ public class MarketService {
     }
     public List<ReviewView> reviews(String storeId) {
         catalog.store(storeId);
-        return reviews.findByStoreIdOrderByCreatedAtDescIdDesc(storeId).stream().map(r->new ReviewView(r.id,r.authorName,r.rating,r.text,date(r.createdAt),!r.imageUrls.isEmpty(),List.copyOf(r.imageUrls))).toList();
+        long userId = UserContext.getUserId();
+        return reviews.findByStoreIdOrderByCreatedAtDescIdDesc(storeId).stream()
+            .map(r -> new ReviewView(r.id,r.authorName,r.rating,r.text,date(r.createdAt),!r.imageUrls.isEmpty(),List.copyOf(r.imageUrls),r.userId==userId))
+            .toList();
     }
     @Transactional
     public ReviewResult review(ReviewRequest request) {
