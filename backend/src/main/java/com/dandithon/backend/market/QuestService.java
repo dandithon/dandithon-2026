@@ -38,8 +38,9 @@ public class QuestService {
         long currentUserId = com.dandithon.backend.user.UserContext.getUserId();
         LocalDate day=activities.today();
         var daily=DAILY.stream().map(def->{
-            long count=current(currentUserId,def.id(),day);
-            String status=claims.existsById(claimId(currentUserId,def.id(),day))?"CLAIMED":count>=def.target()?"COMPLETED":"IN_PROGRESS";
+            boolean claimed=claims.existsById(claimId(currentUserId,def.id(),day));
+            long count=claimed?def.target():current(currentUserId,def.id(),day);
+            String status=claimed?"CLAIMED":count>=def.target()?"COMPLETED":"IN_PROGRESS";
             return new Quest(def.id(),def.title(),Math.min(count,def.target()),def.target(),def.reward(),status,false);
         }).toList();
         return Map.of("daily",daily,"achievement",List.of(),"event",List.of());

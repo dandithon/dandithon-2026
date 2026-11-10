@@ -93,6 +93,13 @@ class DailyQuestIntegrationTest {
         assertThat(quest(1).path("status").asText()).isEqualTo("COMPLETED");
         json(request("POST","/quests/review-1/claim",null,null),200);assertThat(balance()).isEqualTo(800);
         json(request("POST","/quests/review-1/claim",null,null),400);
+
+        // Deleting the review after claiming preserves progress=1 and status=CLAIMED
+        var reviews=get("/stores/seomun/reviews").path("reviews");
+        String reviewId=reviews.get(0).path("id").asText();
+        json(request("DELETE","/reviews/"+reviewId,null,null),200);
+        assertThat(quest(1).path("current").asInt()).isEqualTo(1);
+        assertThat(quest(1).path("status").asText()).isEqualTo("CLAIMED");
     }
     @Test void successfulHatWearPersistsAfterUnequipAndRequiresNewActionNextDay()throws Exception {
         assertThat(quest(2).path("id").asText()).isEqualTo("equip-hat");
