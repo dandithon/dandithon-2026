@@ -1,7 +1,9 @@
 package com.dandithon.backend.market;
 import com.dandithon.backend.common.ApiResponse;
 import java.util.Map;
+import org.springframework.http.CacheControl;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 @RestController @RequestMapping("/api/v1")
 public class MarketController {
@@ -11,7 +13,11 @@ public class MarketController {
     @GetMapping("/stores/{storeId}") public ApiResponse<?> store(@PathVariable String storeId) {return ApiResponse.ok(service.store(storeId));}
     @PostMapping("/orders") public ApiResponse<?> order(@RequestBody(required=false) MarketService.OrderRequest request,@RequestHeader(value="Idempotency-Key",required=false) String key) {return ApiResponse.ok(service.order(request,key));}
     @GetMapping("/orders/receipts") public ApiResponse<?> receipts() {return ApiResponse.ok(Map.of("receipts",service.receipts()));}
-    @GetMapping("/stores/{storeId}/reviews") public ApiResponse<?> reviews(@PathVariable String storeId) {return ApiResponse.ok(Map.of("reviews",service.reviews(storeId)));}
+    @GetMapping("/stores/{storeId}/reviews")
+    public ResponseEntity<ApiResponse<?>> reviews(@PathVariable String storeId) {
+        return ResponseEntity.ok().cacheControl(CacheControl.noStore())
+            .body(ApiResponse.ok(Map.of("reviews",service.reviews(storeId))));
+    }
     @PostMapping("/reviews") @ResponseStatus(HttpStatus.CREATED) public ApiResponse<?> review(@RequestBody(required=false) MarketService.ReviewRequest request) {return ApiResponse.ok(service.review(request));}
     @DeleteMapping("/reviews/{reviewId}") public ApiResponse<?> deleteReview(@PathVariable String reviewId) {return ApiResponse.ok(service.deleteReview(reviewId));}
 }

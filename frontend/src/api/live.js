@@ -233,7 +233,7 @@ export function createLiveApi(request, storage,discoverFeatures,mediaBaseUrl,get
       const order=state.orders.find(o=>o.id===id);
       if(!order)throw Error('영수증을 다시 열어 주세요.');
       const result=await request('/reviews',{method:'POST',body:{orderId:order.orderId,text,rating,imageUrls}});
-      state.reviews=[reviewWithPhotos({...result,id:result.reviewId,photos:imageUrls.length>0,imageUrls},order.storeId),...state.reviews];
+      state.reviews=[reviewWithPhotos({...result,id:result.reviewId,isMine:true,photos:imageUrls.length>0,imageUrls},order.storeId),...state.reviews];
       state.orders=state.orders.map(o=>o.orderId===order.orderId?{...o,status:'reviewed',canReview:false}:o);
       return snapshot();
     },

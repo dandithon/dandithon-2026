@@ -38,6 +38,7 @@ test('lost order response survives reload; review uses the server order ID for a
   const reviewed=await market.review(orders[1].id,'테스트',5);
   assert.ok(reviewed.orders.every(o=>o.status==='reviewed'));
   assert.equal(reviewed.reviews[0].storeId,'seomun');
+  assert.equal(reviewed.reviews[0].isMine,true);
 });
 
 test('late receipt responses cannot erase a confirmed purchase or undo a review',async()=>{
